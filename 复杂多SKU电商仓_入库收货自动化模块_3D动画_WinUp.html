@@ -1267,8 +1267,6 @@ eeGlow2.position.copy(eeGlow.position); eeGlow2.visible=false; scene.add(eeGlow2
 var boxGlow=mesh(sph(0.22,8),new THREE.MeshLambertMaterial({color:0xff6600,transparent:true,opacity:0.16,depthWrite:false}));
 boxGlow.position.set(-1.5,tableTop+0.21,2.19); scene.add(boxGlow);
 
-// 吸盘作用线（从EE向下到箱面）
-addLine(-1.5,1.34,2.19,-1.5,tableTop+0.42,2.19,0x00aacc);
 
 // R2 static held box / glows — hidden, replaced by animation
 var r2InnerHeld=makeClosedBox(0.28,0.18,0.24,5);
@@ -1277,8 +1275,6 @@ var r2EeGlow=mesh(sph(0.062,8),new THREE.MeshLambertMaterial({color:0xff8800,tra
 r2EeGlow.position.set(2.5,1.47,0.86); r2EeGlow.visible=false; scene.add(r2EeGlow);
 var r2EeGlow2=mesh(sph(0.11,8),new THREE.MeshLambertMaterial({color:0xcc5500,transparent:true,opacity:0.18,depthWrite:false}));
 r2EeGlow2.position.copy(r2EeGlow.position); scene.add(r2EeGlow2);
-// 放置轨迹线：EE → 暂存台目标位置（示意送至暂存区）
-addLine(2.5,1.46,0.86, 2.5,cvTop+0.24,0.0, 0xff8844);
 
 // ② 暂存区：内盒已在 STAGING AREA 部分统一铺满，此处无需重复
 
@@ -1288,9 +1284,7 @@ addLine(2.5,1.46,0.86, 2.5,cvTop+0.24,0.0, 0xff8844);
 
 // ── R5 将内盒放入Z区容器 — EE≈(2.5, 1.77, -2.16) ──
 // r5PlaceBox / glows removed — replaced by _rrHeld[2] attached to R5 wrist animation
-// 放置轨迹线：EE → Z11容器开口（示意方向）
 var z11x=ZX0+10*ZSP;
-addLine(2.5,1.77,-2.16, z11x,1.44,ZZ, 0xff8844);
 
 // ③ R3-R6在暂存区开内盒·散货外露
 var oc3=makeOpenBox(0.34,0.24,0.32,0x253520,0x324428);
