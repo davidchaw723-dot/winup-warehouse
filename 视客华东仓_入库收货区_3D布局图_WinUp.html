@@ -1,0 +1,1626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>视客华东仓 · 入库收货区 · 3D布局图 · WinUp</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#030a14;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif;color:#c8ddf0}
+canvas{display:block}
+
+#topbar{
+  position:fixed;top:0;left:0;right:0;height:50px;
+  background:rgba(4,12,26,0.97);border-bottom:1px solid #0e2235;
+  display:flex;align-items:center;padding:0 20px;gap:0;z-index:20;pointer-events:auto;
+}
+.tit{font-size:15px;font-weight:700;color:#55aadd;letter-spacing:0.8px}
+.sub{font-size:11px;color:#2a4a60;margin-left:14px}
+.ver{margin-left:auto;font-size:10px;color:#1a3a50;border:1px solid #0e2235;
+  padding:3px 10px;border-radius:3px;letter-spacing:1px}
+
+#infobox{
+  position:fixed;left:16px;bottom:62px;
+  background:rgba(4,12,24,0.94);border:1px solid #0e2235;
+  border-radius:5px;padding:14px 16px;width:196px;z-index:20;
+}
+#infobox h4{font-size:10px;color:#4a88aa;letter-spacing:1.5px;text-transform:uppercase;
+  margin-bottom:10px;border-bottom:1px solid #1a3a50;padding-bottom:6px}
+.irow{display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px}
+.ilbl{color:#6a99bb}.ival{color:#aaddff;font-weight:600}
+
+
+#cambar{
+  position:fixed;bottom:18px;left:50%;transform:translateX(-50%);
+  display:flex;gap:7px;z-index:20;
+}
+#cambar button{
+  background:rgba(7,18,35,0.92);border:1px solid #142a40;
+  color:#5588aa;font-size:11.5px;padding:8px 16px;border-radius:4px;
+  cursor:pointer;letter-spacing:0.3px;transition:all 0.15s;font-family:inherit;
+}
+#cambar button:hover{background:rgba(12,35,65,0.96);border-color:#1e5070;color:#88ccee}
+#cambar button.act{background:rgba(10,40,80,0.98);border-color:#2a7799;color:#fff;font-weight:600}
+
+#tip{position:fixed;bottom:62px;left:50%;transform:translateX(-50%);
+  font-size:10px;color:#142233;letter-spacing:0.5px;z-index:20;pointer-events:none}
+
+/* ── 设备选择面板 ── */
+#equipPanel{
+  position:fixed;left:16px;top:66px;width:190px;
+  background:rgba(4,12,24,0.95);border:1px solid #0e2235;
+  border-radius:5px;padding:10px 10px 8px;
+  max-height:calc(100vh - 90px);overflow-y:auto;
+  z-index:20;scrollbar-width:thin;scrollbar-color:#0e2235 transparent;
+}
+#equipPanel h4{font-size:10px;color:#4a88aa;letter-spacing:1.5px;text-transform:uppercase;
+  margin-bottom:8px;border-bottom:1px solid #1a3a50;padding-bottom:5px}
+.eSep{display:block;font-size:9px;color:#3a6a88;padding:5px 2px 2px;letter-spacing:0.8px}
+.eBtn{
+  display:block;width:100%;margin:2px 0;padding:5px 8px;
+  background:rgba(10,22,40,0.7);border:1px solid #1a3a55;border-radius:3px;
+  color:#88bbdd;font-size:10.5px;cursor:pointer;text-align:left;
+  transition:all 0.12s;font-family:inherit;letter-spacing:0.2px;
+}
+.eBtn:hover{background:rgba(20,50,85,0.9);color:#bbddff;border-color:#2a5a88}
+.eBtn.active{background:rgba(160,20,80,0.35);color:#ffaacc;border-color:#cc2266;font-weight:600}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <span class="tit">视客华东仓 · 入库收货区 · 3D布局图</span>
+  <span class="sub">15m × 7m · Z1–Z18 · 6台协作机器人 · 方案一</span>
+  <span class="ver">WINUP · 2026.03</span>
+</div>
+
+<div id="infobox">
+  <h4>区域参数</h4>
+  <div class="irow"><span class="ilbl">收货区尺寸</span><span class="ival">15m × 7m</span></div>
+  <div class="irow"><span class="ilbl">暂存容器</span><span class="ival">Z1 – Z18（18个）</span></div>
+  <div class="irow"><span class="ilbl">前排机器人</span><span class="ival">R1/R2 · 7轴导轨</span></div>
+  <div class="irow"><span class="ilbl">后排机器人</span><span class="ival">R3–R6 · 分区固定</span></div>
+  <div class="irow"><span class="ilbl">条码扫描器</span><span class="ival">3台</span></div>
+  <div class="irow"><span class="ilbl">纸箱压实机</span><span class="ival">2台（自动触发）</span></div>
+  <div class="irow"><span class="ilbl">传送带</span><span class="ival">3条 · 各13.5m</span></div>
+  <div class="irow"><span class="ilbl">Andon看板</span><span class="ival">1套</span></div>
+</div>
+
+
+<div id="equipPanel">
+  <h4>设备高亮选择</h4>
+  <span class="eSep">── 前排机器人 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'R1')">R1 · 7轴协作机器人</button>
+  <button class="eBtn" onclick="hlEquip(this,'R2')">R2 · 7轴协作机器人</button>
+  <span class="eSep">── 后排机器人 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'R3')">R3 · 分拣机器人</button>
+  <button class="eBtn" onclick="hlEquip(this,'R4')">R4 · 分拣机器人</button>
+  <button class="eBtn" onclick="hlEquip(this,'R5')">R5 · 分拣机器人</button>
+  <button class="eBtn" onclick="hlEquip(this,'R6')">R6 · 分拣机器人</button>
+  <span class="eSep">── 导轨 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'RAIL_F')">前排7轴导轨（R1/R2）</button>
+  <button class="eBtn" onclick="hlEquip(this,'RAIL_R')">后排7轴导轨（R3–R6）</button>
+  <span class="eSep">── 工作站 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'TABLE')">开箱工作台</button>
+  <button class="eBtn" onclick="hlEquip(this,'STAGE')">暂存区操作台 S1–S18</button>
+  <span class="eSep">── 扫描器 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'SCAN_A')">扫描器A · 外箱识别（开箱台居中）</button>
+  <button class="eBtn" onclick="hlEquip(this,'SCAN_B')">扫描器B · 内箱分区（暂存/Z区间左）</button>
+  <button class="eBtn" onclick="hlEquip(this,'SCAN_C')">扫描器C · 内箱分区（暂存/Z区间右）</button>
+  <span class="eSep">── 辅助设备 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'COMP1')">压实机①</button>
+  <button class="eBtn" onclick="hlEquip(this,'COMP2')">压实机②</button>
+  <button class="eBtn" onclick="hlEquip(this,'ANDON')">Andon 看板</button>
+  <span class="eSep">── Z区暂存容器 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'Z1_4')">Z1–Z4（R3负责）</button>
+  <button class="eBtn" onclick="hlEquip(this,'Z5_14')">Z5–Z14（R4/R5负责）</button>
+  <button class="eBtn" onclick="hlEquip(this,'Z15_18')">Z15–Z18（R6负责）</button>
+  <span class="eSep">── 通道 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'CORRIDOR')">取货通道</button>
+  <span class="eSep">── 安全围栏 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'FENCE_F')">前排安全围栏（U形）</button>
+  <button class="eBtn" onclick="hlEquip(this,'FENCE_S')">两侧安全围栏</button>
+  <span class="eSep">── 状态指示 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'SIGLAMP')">状态信号灯 · Z1–Z18</button>
+</div>
+
+<div id="cambar">
+  <button class="act" id="b-iso" onclick="setCam('iso')">⬡ 等角全览</button>
+  <button id="b-top" onclick="setCam('top')">▤ 俯视图</button>
+  <button id="b-zside" onclick="setCam('zside')">◻ Z区正视</button>
+  <button id="b-load" onclick="setCam('load')">◻ 入货正视</button>
+  <button id="b-side" onclick="setCam('side')">◫ 侧视图</button>
+</div>
+
+<div id="tip">鼠标左键旋转 · 右键平移 · 滚轮缩放</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+if(typeof THREE==='undefined'){
+  document.body.innerHTML='<div style="color:#ff4444;padding:60px;font-size:16px">Three.js 加载失败，请检查网络连接后刷新</div>';
+  throw new Error('THREE not loaded');
+}
+
+// ─────────────────────────────────────────────────────────────
+//  RENDERER / SCENE / CAMERA / CONTROLS
+// ─────────────────────────────────────────────────────────────
+var W=window.innerWidth, H=window.innerHeight;
+var renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(W,H);
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.shadowMap.enabled=false;
+document.body.appendChild(renderer.domElement);
+
+var scene=new THREE.Scene();
+scene.background=new THREE.Color(0x030a14);
+scene.fog=new THREE.FogExp2(0x030a14,0.018);
+
+var camera=new THREE.PerspectiveCamera(42,W/H,0.1,200);
+
+var controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.dampingFactor=0.07;
+controls.maxPolarAngle=Math.PI*0.88;
+controls.minDistance=2;
+controls.maxDistance=60;
+
+window.addEventListener('resize',function(){
+  W=window.innerWidth;H=window.innerHeight;
+  renderer.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix();
+});
+
+// Lights
+scene.add(new THREE.AmbientLight(0x6688aa,2.2));
+var dL=new THREE.DirectionalLight(0xaaccee,1.4); dL.position.set(6,16,8); scene.add(dL);
+var dL2=new THREE.DirectionalLight(0x6688aa,0.9); dL2.position.set(-10,12,-6); scene.add(dL2);
+var dL3=new THREE.DirectionalLight(0x445566,0.6); dL3.position.set(0,8,12); scene.add(dL3);
+
+// ─────────────────────────────────────────────────────────────
+//  HELPERS
+// ─────────────────────────────────────────────────────────────
+function box(w,h,d){return new THREE.BoxGeometry(w,h,d)}
+function cyl(rt,rb,h,s){return new THREE.CylinderGeometry(rt,rb,h,s||12)}
+function sph(r,s){return new THREE.SphereGeometry(r,s||10,s||8)}
+function mesh(g,m){return new THREE.Mesh(g,m)}
+function LM(c,ei){
+  var m=new THREE.MeshLambertMaterial({color:c});
+  if(ei){m.emissive=new THREE.Color(ei);m.emissiveIntensity=0.35;}
+  return m;
+}
+function TLM(c,op){return new THREE.MeshLambertMaterial({color:c,transparent:true,opacity:op})}
+function BM(c){return new THREE.MeshBasicMaterial({color:c})}
+
+function mkLbl(txt,sz,col){
+  var cvs=document.createElement('canvas');
+  cvs.width=512;cvs.height=128;
+  var ctx=cvs.getContext('2d');
+  ctx.clearRect(0,0,512,128);
+  ctx.font='bold '+(sz||14)+'px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillStyle=col||'#88ccff';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(txt,256,64);
+  var tex=new THREE.CanvasTexture(cvs);
+  var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  return sp;
+}
+
+function mkLblBg(txt,sz,col,bg){
+  var cvs=document.createElement('canvas');
+  cvs.width=512;cvs.height=128;
+  var ctx=cvs.getContext('2d');
+  if(bg){ctx.fillStyle=bg;ctx.fillRect(4,4,504,120);}
+  ctx.font='bold '+(sz||13)+'px "PingFang SC","Microsoft YaHei",sans-serif';
+  ctx.fillStyle=col||'#ffffff';
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(txt,256,64);
+  var tex=new THREE.CanvasTexture(cvs);
+  var sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  return sp;
+}
+
+function addLine(x1,y1,z1,x2,y2,z2,col){
+  var pts=[new THREE.Vector3(x1,y1,z1),new THREE.Vector3(x2,y2,z2)];
+  var g=new THREE.BufferGeometry().setFromPoints(pts);
+  var ln=new THREE.Line(g,new THREE.LineBasicMaterial({color:col||0x1a4060}));
+  scene.add(ln);return ln;
+}
+
+// Dimension line with ticks + label
+function dimArrow(x1,y,z1,x2,z2,txt,offY,col){
+  col=col||0x1a5a7a;offY=offY||0;
+  addLine(x1,y+offY,z1,x2,y+offY,z2,col);
+  var tick=0.18;
+  addLine(x1,y+offY-tick,z1,x1,y+offY+tick,z1,col);
+  addLine(x2,y+offY-tick,z2,x2,y+offY+tick,z2,col);
+  var lbl=mkLbl(txt,13,'#2a7a9a');
+  lbl.scale.set(1.2,0.4,1);
+  lbl.position.set((x1+x2)/2,y+offY+0.35,(z1+z2)/2);
+  scene.add(lbl);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  REALISTIC CARDBOARD TEXTURES
+// ─────────────────────────────────────────────────────────────
+function mkCardboardTex(seed){
+  seed=seed||0;
+  var W=256,H=256;
+  var cvs=document.createElement('canvas'); cvs.width=W; cvs.height=H;
+  var c=cvs.getContext('2d');
+  // Base kraft-brown gradient
+  var bases=['#7a5230','#855e38','#7c5535','#825a34'];
+  var gr=c.createLinearGradient(0,0,W,H);
+  gr.addColorStop(0,bases[seed%4]);
+  gr.addColorStop(0.5,bases[(seed+1)%4]);
+  gr.addColorStop(1,bases[(seed+2)%4]);
+  c.fillStyle=gr; c.fillRect(0,0,W,H);
+  // Corrugation: fine horizontal lines
+  for(var y=0;y<H;y+=4){
+    c.fillStyle='rgba(0,0,0,0.055)'; c.fillRect(0,y,W,1.5);
+    c.fillStyle='rgba(255,210,160,0.03)'; c.fillRect(0,y+2,W,1);
+  }
+  // Fiber grain (pseudo-random short strokes)
+  var rng=seed*7+13;
+  for(var i=0;i<700;i++){
+    rng=(rng*1664525+1013904223)>>>0;
+    var nx=(rng&0xff)/255*W;
+    rng=(rng*1664525+1013904223)>>>0;
+    var ny=(rng&0xff)/255*H;
+    rng=(rng*1664525+1013904223)>>>0;
+    var nl=(rng&0xf)/15*7+1;
+    rng=(rng*1664525+1013904223)>>>0;
+    var al=(rng&0xff)/255*0.07;
+    var dark=((rng>>8)&1);
+    c.strokeStyle=dark?('rgba(0,0,0,'+al+')'):'rgba(255,190,120,'+al*0.6+')';
+    c.lineWidth=0.5;
+    c.beginPath(); c.moveTo(nx,ny); c.lineTo(nx+nl,ny+((rng>>16)&3)-1.5); c.stroke();
+  }
+  // Vignette: top+bottom edge darkening
+  var ev=c.createLinearGradient(0,0,0,H);
+  ev.addColorStop(0,'rgba(0,0,0,0.22)'); ev.addColorStop(0.14,'rgba(0,0,0,0)');
+  ev.addColorStop(0.86,'rgba(0,0,0,0)'); ev.addColorStop(1,'rgba(0,0,0,0.16)');
+  c.fillStyle=ev; c.fillRect(0,0,W,H);
+  // Left+right edge darkening
+  var eh=c.createLinearGradient(0,0,W,0);
+  eh.addColorStop(0,'rgba(0,0,0,0.14)'); eh.addColorStop(0.1,'rgba(0,0,0,0)');
+  eh.addColorStop(0.9,'rgba(0,0,0,0)'); eh.addColorStop(1,'rgba(0,0,0,0.12)');
+  c.fillStyle=eh; c.fillRect(0,0,W,H);
+  return new THREE.CanvasTexture(cvs);
+}
+
+function mkShippingLabelTex(){
+  var W=256,H=128;
+  var cvs=document.createElement('canvas'); cvs.width=W; cvs.height=H;
+  var c=cvs.getContext('2d');
+  // Label background
+  c.fillStyle='#f4eedd'; c.fillRect(0,0,W,H);
+  c.strokeStyle='#bba98a'; c.lineWidth=1.5; c.strokeRect(1,1,W-2,H-2);
+  // Header stripe
+  c.fillStyle='#1a4a7a'; c.fillRect(0,0,W,20);
+  c.fillStyle='#fff'; c.font='bold 8px Arial,sans-serif';
+  c.textAlign='left'; c.textBaseline='middle';
+  c.fillText('SK CONTACT LENS  视客', 5, 10);
+  c.textAlign='right';
+  c.fillText('月抛型', W-5, 10);
+  // Product info
+  c.fillStyle='#222'; c.font='bold 7.5px Arial,sans-serif';
+  c.textAlign='left'; c.textBaseline='top';
+  c.fillText('CL-5502  月抛型隐形眼镜', 5, 24);
+  c.fillStyle='#555'; c.font='7px Arial,sans-serif';
+  c.fillText('QTY: 30pcs  /  LOT: 2026030801', 5, 34);
+  c.fillText('EXP: 2028-03  /  STORE: <25°C', 5, 43);
+  // Fragile
+  c.fillStyle='#cc2200'; c.font='bold 7px Arial,sans-serif';
+  c.fillText('⚠ 小心轻放  FRAGILE', 5, 53);
+  c.strokeStyle='#cc2200'; c.lineWidth=0.8; c.strokeRect(3,51,100,11);
+  // Barcode
+  var bx=148, by=24, bh=56;
+  c.fillStyle='#fff'; c.fillRect(bx-2,by-2,106,bh+10);
+  c.fillStyle='#111';
+  var bw=1.6;
+  for(var bi=0;bi<54;bi++){
+    var skip=(bi%7===3||bi%11===5);
+    if(!skip){ c.fillRect(bx,by,bw*(bi%3===0?2:1),bh); }
+    bx+=bw*(bi%2===0?2.2:1.4);
+  }
+  c.fillStyle='#111'; c.font='6px monospace';
+  c.textAlign='center'; c.textBaseline='top';
+  c.fillText('6 90123 45678 9', 200, 83);
+  return new THREE.CanvasTexture(cvs);
+}
+
+function mkTapeTex(){
+  var W=64,H=64;
+  var cvs=document.createElement('canvas'); cvs.width=W; cvs.height=H;
+  var c=cvs.getContext('2d');
+  // Brownish packing tape
+  c.fillStyle='rgba(200,175,110,0.72)'; c.fillRect(0,0,W,H);
+  // Slight horizontal grain
+  for(var y=0;y<H;y+=3){
+    c.fillStyle='rgba(255,255,220,0.08)'; c.fillRect(0,y,W,1);
+    c.fillStyle='rgba(0,0,0,0.04)'; c.fillRect(0,y+1,W,1);
+  }
+  return new THREE.CanvasTexture(cvs);
+}
+
+// Pre-bake shared materials (avoid creating new canvas per box)
+var _cbMats=(function(){
+  var mats=[];
+  for(var s=0;s<4;s++) mats.push(new THREE.MeshLambertMaterial({map:mkCardboardTex(s)}));
+  return mats;
+})();
+var _labelMat=new THREE.MeshLambertMaterial({map:mkShippingLabelTex(),transparent:false});
+var _tapeMat=new THREE.MeshLambertMaterial({map:mkTapeTex(),transparent:true,opacity:0.82});
+
+// Helper: add tape strip on top of a box face
+function addTape(parent, w, h, d, faceDir){
+  // faceDir: 'x' or 'z'
+  var tg, tp;
+  if(faceDir==='x'){ // runs along x (top of front/back walls)
+    tg=box(w,0.010,0.048); tp=new THREE.Vector3(0,h,0);
+  } else { // runs along z (top of side walls)
+    tg=box(0.048,0.010,d); tp=new THREE.Vector3(0,h,0);
+  }
+  var tm=mesh(tg,_tapeMat); tm.position.copy(tp); parent.add(tm);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  ROOM  15m (x: -7.5→+7.5)  ×  7m (z: -3.5→+3.5)
+// ─────────────────────────────────────────────────────────────
+// Floor
+var flr=mesh(box(15,0.06,7),LM(0x080f1c));
+flr.position.set(0,-0.03,0);scene.add(flr);
+
+// Grid
+var grd=new THREE.GridHelper(15,15,0x0a1e32,0x060e1a);
+grd.position.set(0,0.012,0);scene.add(grd);
+
+// 1m sub-grid (lighter)
+var grd2=new THREE.GridHelper(15,30,0x0a1820,0x0a1820);
+grd2.position.set(0,0.01,0);scene.add(grd2);
+
+// Walls (transparent) — room extended: back wall now at z=-5.55, corridor 2m behind Z-zone
+var wm=TLM(0x08182e,0.25);
+var wB=mesh(box(15.2,4.5,0.08),wm); wB.position.set(0,2.25,-5.55);scene.add(wB);
+// Side walls cover full depth: z=-5.55 to z=+3.55 = 9.1m, centred at z=-1.0
+var wL=mesh(box(0.08,4.5,9.2),wm); wL.position.set(-7.55,2.25,-1.0);scene.add(wL);
+var wR=mesh(box(0.08,4.5,9.2),wm); wR.position.set(7.55,2.25,-1.0);scene.add(wR);
+// Corridor floor extension (z=-3.5 to z=-5.5)
+var cFlr=mesh(box(15,0.06,2.0),LM(0x060c18)); cFlr.position.set(0,-0.03,-4.5);scene.add(cFlr);
+// Corridor grid
+var cGrd=new THREE.GridHelper(2,2,0x0a1e32,0x060e1a); cGrd.rotation.y=Math.PI/2;
+cGrd.position.set(0,0.012,-4.5); cGrd.scale.set(7.5,1,1); scene.add(cGrd);
+// Corridor ceiling beams (skip x=0 — that beam clips through the Andon board)
+[-6,6].forEach(function(x){
+  var b=mesh(box(0.16,0.14,2.0),LM(0x0a1826)); b.position.set(x,3.98,-4.5);scene.add(b);
+});
+// Corridor back corner pillars
+[[-7.5,-5.5],[7.5,-5.5]].forEach(function(xz){
+  var p=mesh(cyl(0.1,0.1,4,8),LM(0x0e1e2e)); p.position.set(xz[0],2,xz[1]);scene.add(p);
+});
+// Yellow warning stripe on floor (corridor entry, z=-3.5 line)
+var warnMat=new THREE.MeshLambertMaterial({color:0x887700});
+var warnLine=mesh(box(15,0.008,0.12),warnMat); warnLine.position.set(0,0.005,-3.5);scene.add(warnLine);
+// ── 取货通道 highlight（立体高亮框，默认隐藏，点击按钮显示）──
+var _pickZoneGeo=new THREE.BoxGeometry(15,2.0,2.0);
+var _pickZone=mesh(_pickZoneGeo,new THREE.MeshLambertMaterial({color:0x00aa44,transparent:true,opacity:0.18,depthWrite:false}));
+_pickZone.position.set(0,1.0,-4.5); _pickZone.visible=false; scene.add(_pickZone);
+var _pickEdge=new THREE.LineSegments(new THREE.EdgesGeometry(_pickZoneGeo),new THREE.LineBasicMaterial({color:0x00ff66,transparent:true,opacity:0.8}));
+_pickEdge.position.set(0,1.0,-4.5); _pickEdge.visible=false; scene.add(_pickEdge);
+
+// Corner pillars
+[[-7.5,-3.5],[-7.5,3.5],[7.5,-3.5],[7.5,3.5]].forEach(function(xz){
+  var p=mesh(cyl(0.1,0.1,4,8),LM(0x0e1e2e)); p.position.set(xz[0],2,xz[1]);scene.add(p);
+});
+
+// Ceiling beam (center removed)
+[-6,6].forEach(function(x){
+  var b=mesh(box(0.16,0.14,7),LM(0x0a1826)); b.position.set(x,3.98,0);scene.add(b);
+});
+
+// LED ceiling fixtures (center column removed — overlaps Andon board)
+[[-6,4,-1],[6,4,-1],[-6,4,1.5],[6,4,1.5]].forEach(function(p){
+  var f=mesh(box(0.4,0.06,1.0),new THREE.MeshLambertMaterial({
+    color:0xaaddee,emissive:new THREE.Color(0x336666),emissiveIntensity:0.8}));
+  f.position.set(p[0],p[1],p[2]);scene.add(f);
+});
+
+// Floor zone lines (conveyor positions)
+[[-1.65,0x1a2a18],[0.0,0x1e2e10],[1.45,0x1a2a18]].forEach(function(zc){
+  var l=mesh(box(15,0.007,0.025),BM(zc[1])); l.position.set(0,0.016,zc[0]);scene.add(l);
+});
+
+// Floor perimeter stripe
+var fl_edge=new THREE.EdgesGeometry(box(15,0.01,7));
+var el=new THREE.LineSegments(fl_edge,new THREE.LineBasicMaterial({color:0x0e2a40}));
+el.position.set(0,0.01,0);scene.add(el);
+
+// ─────────────────────────────────────────────────────────────
+//  CONVEYORS  (front: z=-1.65 · middle: z=0 · rear: z=1.45)
+// ─────────────────────────────────────────────────────────────
+function makeConveyor(len,z,fc){
+  var g=new THREE.Group();
+  var fr=mesh(box(len,0.16,0.56),LM(fc));fr.position.y=0.08;g.add(fr);
+  var belt=mesh(box(len-0.1,0.022,0.42),LM(0x0c1820));belt.position.y=0.172;g.add(belt);
+  for(var bx=-len/2+0.3;bx<len/2;bx+=0.55){
+    var s=mesh(box(0.025,0.007,0.4),BM(0x142030));s.position.set(bx,0.184,0);g.add(s);
+  }
+  [-len/2+0.05,len/2-0.05].forEach(function(rx){
+    var r=mesh(cyl(0.065,0.065,0.5,8),LM(0x22334a));r.rotation.z=Math.PI/2;r.position.set(rx,0.15,0);g.add(r);
+  });
+  [-0.26,0.26].forEach(function(sz){
+    var sr=mesh(box(len,0.04,0.035),LM(0x1a2e40));sr.position.set(0,0.19,sz);g.add(sr);
+  });
+  for(var lx=-len/2+1;lx<len/2;lx+=2.5){
+    [-0.2,0.2].forEach(function(lz){
+      var lg=mesh(box(0.055,0.82,0.055),LM(0x162030));lg.position.set(lx,-0.33,lz);g.add(lg);
+    });
+  }
+  g.position.set(0,0.87,z);
+  return g;
+}
+
+var cvF=makeConveyor(13.5,-1.65,0x14243a); scene.add(cvF);
+var cvR=makeConveyor(13.5,1.45,0x14243a); scene.add(cvR);
+
+// Conveyor labels
+
+// ─────────────────────────────────────────────────────────────
+//  STAGING AREA 暂存区 — 长条底座 + S1–S18 内盒放置区
+// ─────────────────────────────────────────────────────────────
+var SSP=14/18, SX0=-7+SSP/2;
+var PLAT_Y=0.84;   // platform top surface y
+var PLAT_D=0.58;   // platform depth (z-direction)
+var PLAT_BODY=0.14;// platform body height
+var tabTop=PLAT_Y; // referenced by workflow effects
+var STAB_TOP=0;    // no offset (boxes sit directly on platform)
+
+// ── Long platform body
+var platBodyMat=new THREE.MeshLambertMaterial({
+  color:0x1e3020,emissive:new THREE.Color(0x080f08),emissiveIntensity:0.5});
+var platBody=mesh(box(14.05,PLAT_BODY,PLAT_D),platBodyMat);
+platBody.position.set(0,PLAT_Y-PLAT_BODY/2,0); scene.add(platBody);
+
+// ── Front & back edge rails
+var railEdgeMat=new THREE.MeshLambertMaterial({
+  color:0x2a4a2a,emissive:new THREE.Color(0x0a180a),emissiveIntensity:0.6});
+[PLAT_D/2-0.01, -PLAT_D/2+0.01].forEach(function(ez){
+  var er=mesh(box(14.05,0.030,0.022),railEdgeMat);
+  er.position.set(0,PLAT_Y+0.015,ez); scene.add(er);
+});
+
+// ── Support legs (every ~2.3m)
+var legXs=[-6.4,-3.8,-1.2,1.2,3.8,6.4];
+legXs.forEach(function(lx){
+  [-PLAT_D/2+0.05, PLAT_D/2-0.05].forEach(function(lz){
+    var leg=mesh(box(0.06,PLAT_Y-PLAT_BODY,0.06),LM(0x141e14));
+    leg.position.set(lx,(PLAT_Y-PLAT_BODY)/2,lz); scene.add(leg);
+  });
+  // horizontal cross-brace
+  var brace=mesh(box(0.04,0.04,PLAT_D-0.12),LM(0x111a11));
+  brace.position.set(lx,(PLAT_Y-PLAT_BODY)*0.45,0); scene.add(brace);
+});
+
+// ── Zone dividers (17 fins between 18 zones)
+var divMat=new THREE.MeshLambertMaterial({
+  color:0x0a1f0a,emissive:new THREE.Color(0x040a04),emissiveIntensity:0.4});
+for(var di=1;di<18;di++){
+  var dx=SX0+di*SSP-SSP/2;
+  var dfin=mesh(box(0.016,0.065,PLAT_D-0.04),divMat);
+  dfin.position.set(dx,PLAT_Y+0.032,0); scene.add(dfin);
+}
+
+// ── S1–S18 内盒（与机器人持盒完全一致：makeClosedBox 0.28×0.18×0.24，前后各一排堆满）
+for(var si=0;si<18;si++){
+  var sxc=SX0+si*SSP;
+  [-PLAT_D*0.22, PLAT_D*0.22].forEach(function(sz,zi){
+    var stgb=makeClosedBox(0.28,0.18,0.24,(si*2+zi)%6+1);
+    stgb.position.set(sxc,PLAT_Y,sz);
+    scene.add(stgb);
+  });
+}
+
+
+// ─────────────────────────────────────────────────────────────
+//  7th AXIS RAIL  (above receiving conveyor, near loading bay)
+// ─────────────────────────────────────────────────────────────
+var railM=LM(0x2a5a7a);
+var rA=mesh(box(13.6,0.05,0.05),railM); rA.position.set(0,1.22,1.45);scene.add(rA);
+var rB=mesh(box(13.6,0.05,0.05),railM); rB.position.set(0,1.22,1.57);scene.add(rB);
+// Rail bracket markers
+[-6,-3,0,3,6].forEach(function(x){
+  var br=mesh(box(0.06,0.18,0.06),LM(0x1e4a60)); br.position.set(x,1.15,1.51);scene.add(br);
+});
+
+// ─────────────────────────────────────────────────────────────
+//  ROBOT FACTORY
+// ─────────────────────────────────────────────────────────────
+function makeRobot(col,rmName){
+  var g=new THREE.Group();
+  var cm=LM(col),dm=LM(0x0d1c2a),jm=LM(0x070f18);
+  var car=mesh(box(0.22,0.09,0.2),dm); car.position.y=-0.055;g.add(car);
+  var base=mesh(cyl(0.1,0.12,0.13),dm); base.position.y=0.065;g.add(base);
+  var waist=new THREE.Group(); waist.position.y=0.13;g.add(waist);
+  var col1=mesh(cyl(0.07,0.07,0.22,8),cm); col1.position.y=0.11;waist.add(col1);
+  var shldr=new THREE.Group(); shldr.position.y=0.22;waist.add(shldr);
+  shldr.add(mesh(sph(0.062,7),jm));
+  var ua=mesh(box(0.058,0.50,0.058),cm); ua.position.y=0.25;shldr.add(ua);
+  var elbow=new THREE.Group(); elbow.position.y=0.50;shldr.add(elbow);
+  elbow.add(mesh(sph(0.05,7),jm));
+  var fa=mesh(box(0.048,0.40,0.048),LM(col+0x050505)); fa.position.y=0.20;elbow.add(fa);
+  var wrist=new THREE.Group(); wrist.position.y=0.40;elbow.add(wrist);
+  wrist.add(mesh(sph(0.04,7),jm));
+  // End-effector plate
+  var ee=mesh(box(0.13,0.025,0.13),dm); ee.position.y=0.036;wrist.add(ee);
+  // Suction cups (2×2 array) — larger, with rim + bellows
+  [-0.042,0.042].forEach(function(sx){
+    [-0.042,0.042].forEach(function(sz){
+      var rim=mesh(cyl(0.022,0.018,0.008,8),LM(0x111111)); rim.position.set(sx,0.053,sz);wrist.add(rim);
+      var bellow=mesh(cyl(0.014,0.020,0.018,8),LM(0x1a1a1a)); bellow.position.set(sx,0.062,sz);wrist.add(bellow);
+      var tip=mesh(cyl(0.010,0.014,0.006,8),new THREE.MeshLambertMaterial({color:0x222222})); tip.position.set(sx,0.070,sz);wrist.add(tip);
+    });
+  });
+  // Vacuum hose fitting (center top of EE plate)
+  var hoseFit=mesh(cyl(0.012,0.012,0.028,6),LM(0x223344)); hoseFit.position.set(0,0.05,0);wrist.add(hoseFit);
+  var hose=mesh(cyl(0.007,0.007,0.06,6),LM(0x0a1520)); hose.position.set(0,0.08,0);wrist.add(hose);
+  // Vision camera body (mounted on side of EE, angled down)
+  var camBody=mesh(box(0.048,0.036,0.04),LM(0x0a1825));
+  camBody.position.set(0.072,0.044,0);wrist.add(camBody);
+  // Camera lens
+  var lens=mesh(cyl(0.013,0.011,0.018,8),LM(0x050a0f));
+  lens.rotation.z=Math.PI/2; lens.position.set(0.094,0.044,0);wrist.add(lens);
+  // Lens glass
+  var lensGlass=mesh(cyl(0.009,0.009,0.004,8),new THREE.MeshLambertMaterial({color:0x1133aa,transparent:true,opacity:0.85}));
+  lensGlass.rotation.z=Math.PI/2; lensGlass.position.set(0.104,0.044,0);wrist.add(lensGlass);
+  // Camera status LED (green)
+  var camLed=mesh(sph(0.005,6),BM(0x00ff44)); camLed.position.set(0.072,0.065,0.014);wrist.add(camLed);
+  // Illumination ring (IR LEDs around lens)
+  [0,Math.PI/2,Math.PI,Math.PI*3/2].forEach(function(a){
+    var ir=mesh(sph(0.004,5),BM(0x330011));
+    ir.position.set(0.096,0.044+Math.sin(a)*0.016,Math.cos(a)*0.016);wrist.add(ir);
+  });
+  shldr.rotation.x=-0.5;
+  elbow.rotation.x=0.7;
+  wrist.rotation.x=0.2;
+  g.userData={waist:waist,shldr:shldr,elbow:elbow,wrist:wrist,name:rmName};
+  return g;
+}
+
+// R1 and R2 on 7th-axis rail (near loading bay, z=1.45)
+var R1=makeRobot(0x1a6699,'R1'); R1.position.set(-1.5,1.22,1.45);scene.add(R1);
+var R2=makeRobot(0x1a6699,'R2'); R2.position.set(2.5,1.22,1.45);scene.add(R2);
+// R2 active: 举着内盒转身向暂存区放置（waist=PI朝-z，local+z=world-z=暂存区方向）
+R2.userData.waist.rotation.y=Math.PI;
+R2.userData.shldr.rotation.x=0.9;
+R2.userData.elbow.rotation.x=1.9;
+R2.userData.wrist.rotation.x=-0.7;
+
+// ── R1 ACTIVE: 正在开箱作业姿态（正shldr.x使臂向+z/台面方向伸出）──
+R1.userData.waist.rotation.y=0.0;
+R1.userData.shldr.rotation.x=1.3;
+R1.userData.elbow.rotation.x=1.3;
+R1.userData.wrist.rotation.x=-0.7;
+
+
+// ─────────────────────────────────────────────────────────────
+//  7th AXIS RAIL (rear) — sorting robots R3-R6, overhead
+// ─────────────────────────────────────────────────────────────
+var railRM=LM(0x1a6a3a);
+var rRA=mesh(box(13.6,0.05,0.05),railRM); rRA.position.set(0,1.22,-1.65);scene.add(rRA);
+var rRB=mesh(box(13.6,0.05,0.05),railRM); rRB.position.set(0,1.22,-1.77);scene.add(rRB);
+[-6,-3,0,3,6].forEach(function(x){
+  var br=mesh(box(0.06,0.18,0.06),LM(0x124a2a)); br.position.set(x,1.15,-1.71);scene.add(br);
+});
+
+// R3–R6 rear robots on 7th-axis overhead rail
+var REAR=[
+  {x:-5.5,lbl:'R3',zones:'Z1–Z4'},
+  {x:-1.5,lbl:'R4',zones:'Z5–Z9'},
+  {x:2.5,lbl:'R5',zones:'Z10–Z14'},
+  {x:5.5,lbl:'R6',zones:'Z15–Z18'},
+];
+var RR=[];
+REAR.forEach(function(d){
+  var rb=makeRobot(0x1a7748,d.lbl);
+  rb.position.set(d.x,1.22,-1.65);
+  rb.userData.waist.rotation.y=Math.PI;
+  rb.userData.shldr.rotation.x=-0.8;
+  rb.userData.elbow.rotation.x=0.9;
+  scene.add(rb); RR.push(rb);
+});
+
+// R4: 从暂存区拾取内盒 — waist=0朝+z，正shldr使臂向暂存区方向伸出
+RR[1].userData.waist.rotation.y=0.0;
+RR[1].userData.shldr.rotation.x=0.9;
+RR[1].userData.elbow.rotation.x=1.9;
+RR[1].userData.wrist.rotation.x=-0.7;
+
+// R5: 将内盒放入Z区容器 — waist=PI朝-z，正shldr使臂在local+z方向=world-z（Z区）
+RR[2].userData.shldr.rotation.x=0.3;
+RR[2].userData.elbow.rotation.x=2.0;
+RR[2].userData.wrist.rotation.x=-0.5;
+
+// ─────────────────────────────────────────────────────────────
+//  Z1–Z18  STAGING CONTAINERS  +  SHELF
+// ─────────────────────────────────────────────────────────────
+var NZ=18, ZSP=14/NZ, ZX0=-7+ZSP/2, ZZ=-2.85;
+var SHELFY=0.88, FILL_H=0.52;
+
+// Shelf board
+var shBd=mesh(box(14.5,0.065,0.5),LM(0x111e2a));
+shBd.position.set(0,SHELFY,ZZ);scene.add(shBd);
+var shBk=mesh(box(14.5,0.62,0.065),LM(0x0c1824));
+shBk.position.set(0,SHELFY+0.35,ZZ-0.27);scene.add(shBk);
+[-6.5,-4.5,-2.5,0,2.5,4.5,6.5].forEach(function(x){
+  var sp=mesh(box(0.055,SHELFY,0.055),LM(0x162030)); sp.position.set(x,SHELFY/2,ZZ);scene.add(sp);
+});
+
+// Zone color by robot assignment
+function zoneColor(zi){
+  if(zi<4) return 0x0d3366;       // R3: Z1-Z4
+  if(zi<14) return 0x0d4060;      // R4/R5: Z5-Z14
+  return 0x0d3355;                 // R6: Z15-Z18
+}
+function zoneShellColor(zi){
+  if(zi<4) return 0x152a40;
+  if(zi<14) return 0x153040;
+  return 0x152840;
+}
+
+// Fill states per zone: 0=空 1=散货半满 2=整货半满 3=散货全满 4=整货全满
+var ZFILL=[2,4,3,1,4,2,4,3,2,3,1,4,2,3,4,1,3,2];
+
+for(var zi=0;zi<NZ;zi++){
+  var zx=ZX0+zi*ZSP;
+  var zg=new THREE.Group();
+  zg.position.set(zx,SHELFY+0.002,ZZ);
+  var fstate=ZFILL[zi];
+  var isEmpty=fstate===0, isFull=fstate>=3;
+  var isSanHuo=fstate===1||fstate===3;
+  var isZhengHuo=fstate===2||fstate===4;
+
+  // Open-top container: bottom + 4 walls, NO lid
+  var wm2=new THREE.MeshLambertMaterial({color:zoneShellColor(zi),transparent:true,opacity:0.82});
+  var wm2s=new THREE.MeshLambertMaterial({color:zoneShellColor(zi),transparent:true,opacity:0.55});
+  var cW=ZSP*0.83, cH=0.56, cD=0.38, wt=0.018;
+  // Bottom
+  var bot=mesh(box(cW,wt,cD),LM(0x0e1c2c)); bot.position.set(0,wt/2,0); zg.add(bot);
+  // Front wall (toward camera)
+  var wFr=mesh(box(cW,cH,wt),wm2s); wFr.position.set(0,cH/2,cD/2-wt/2); zg.add(wFr);
+  // Back wall
+  var wBk=mesh(box(cW,cH,wt),wm2); wBk.position.set(0,cH/2,-cD/2+wt/2); zg.add(wBk);
+  // Left wall
+  var wLt=mesh(box(wt,cH,cD),wm2); wLt.position.set(-cW/2+wt/2,cH/2,0); zg.add(wLt);
+  // Right wall
+  var wRt=mesh(box(wt,cH,cD),wm2); wRt.position.set(cW/2-wt/2,cH/2,0); zg.add(wRt);
+  // Top rim (open lip, no lid)
+  var rimMat=LM(0x1e3448);
+  var rimF=mesh(box(cW,0.014,0.014),rimMat); rimF.position.set(0,cH+wt/2, cD/2-wt/2); zg.add(rimF);
+  var rimB=mesh(box(cW,0.014,0.014),rimMat); rimB.position.set(0,cH+wt/2,-cD/2+wt/2); zg.add(rimB);
+  var rimL=mesh(box(0.014,0.014,cD),rimMat); rimL.position.set(-cW/2+wt/2,cH+wt/2,0); zg.add(rimL);
+  var rimR=mesh(box(0.014,0.014,cD),rimMat); rimR.position.set( cW/2-wt/2,cH+wt/2,0); zg.add(rimR);
+
+  var iW=cW-2*wt-0.01, iH=cH-wt, iD=cD-2*wt-0.01;
+
+  // ── 内盒（纸板纹理）+ 隐形眼镜小包装盒（统一真实效果）──
+  if(fstate>0){
+    var ibW=(iW-0.025)/2, ibH=0.155, ibD=iD*0.86;
+    var ibMat=_cbMats[(zi+1)%4];
+    // 满载(绿灯)3层内盒，半满(橙灯)1层内盒
+    var nIbLayers=isFull?3:1;
+    // 底层内盒：每层2个并排
+    for(var il=0;il<nIbLayers;il++){
+      for(var ic=0;ic<2;ic++){
+        var ibx=(ic===0?-1:1)*(ibW/2+0.006);
+        var iby=wt+ibH/2+il*(ibH+0.006);
+        var ib=mesh(box(ibW,ibH,ibD),ibMat); ib.position.set(ibx,iby,0); zg.add(ib);
+        var ibt=mesh(box(ibW,0.006,ibD*0.13),_tapeMat); ibt.position.set(ibx,iby+ibH/2+0.003,0); zg.add(ibt);
+        var lbg=new THREE.PlaneGeometry(ibW*0.54,ibH*0.44);
+        var lbs=new THREE.Mesh(lbg,_labelMat); lbs.position.set(ibx,iby,ibD/2+0.006); zg.add(lbs);
+      }
+    }
+    // 顶层：隐形眼镜小包装盒（满载用3×3铺满，半满用3×2）
+    var pkTopY=wt+nIbLayers*(ibH+0.006)+0.002;
+    var pkW=0.058,pkH=0.028,pkD=0.042;
+    var pkCol=zi<4?0x1a3a6e:zi<14?0x1a3e58:0x1a4a44;
+    var pkMat=new THREE.MeshLambertMaterial({color:pkCol});
+    var pkLbl=BM(zi<4?0x2255cc:zi<14?0x224e77:0x1e6655);
+    var pkCols=3, pkRows=isFull?3:2;
+    for(var sc=0;sc<pkCols;sc++){
+      for(var sr=0;sr<pkRows;sr++){
+        var spx=-iW/2+(sc+0.5)*(iW/pkCols);
+        var spz=-iD/2+(sr+0.5)*(iD/pkRows);
+        var pk=mesh(box(pkW,pkH,pkD),pkMat); pk.position.set(spx,pkTopY+pkH/2,spz); zg.add(pk);
+        var sl=mesh(box(pkW*0.65,0.003,pkD*0.28),pkLbl); sl.position.set(spx,pkTopY+pkH+0.002,spz); zg.add(sl);
+      }
+    }
+  }
+
+  // ── 工业信号灯（竖装式堆叠信号灯，安装在容器顶部右前角）──
+  var lx=cW/2-0.028, lz=cD/2-0.025, ly=cH+wt; // 右前角安装点
+  // 底座安装板（扁平方块，紧贴容器顶面）
+  var basePlate=mesh(box(0.055,0.010,0.055),new THREE.MeshLambertMaterial({color:0x1a2a38}));
+  basePlate.position.set(lx,ly+0.005,lz); zg.add(basePlate);
+  // 竖杆（圆柱）
+  var pole=mesh(cyl(0.007,0.007,0.10,8),new THREE.MeshLambertMaterial({color:0x223344}));
+  pole.position.set(lx,ly+0.010+0.050,lz); zg.add(pole);
+  // 灯体外壳（圆柱形，深色）
+  var housing=mesh(cyl(0.018,0.018,0.038,10),new THREE.MeshLambertMaterial({color:0x111e2a}));
+  housing.position.set(lx,ly+0.010+0.100+0.019,lz); zg.add(housing);
+  // 灯罩（半球或球，带颜色和自发光）
+  var domeCol,domeEmit,domeOpacity;
+  if(isFull){
+    domeCol=0x00ff44; domeEmit=0x00cc33; domeOpacity=1.0;   // 全满：绿色亮灯
+  } else if(fstate===1||fstate===2){
+    domeCol=0xffaa00; domeEmit=0x885500; domeOpacity=0.85;  // 半满：橙色
+  } else {
+    domeCol=0x111a11; domeEmit=0x000000; domeOpacity=1.0;   // 空：灭灯（暗绿色壳）
+  }
+  var domeMat=new THREE.MeshLambertMaterial({
+    color:domeCol, emissive:new THREE.Color(domeEmit), emissiveIntensity: isFull?1.8:(fstate>0?0.9:0)
+  });
+  var dome=mesh(cyl(0.016,0.016,0.022,10),domeMat);
+  dome.position.set(lx,ly+0.010+0.100+0.038+0.011,lz); zg.add(dome);
+  // 灯罩顶部圆帽
+  var cap=mesh(cyl(0.016,0.005,0.008,10),new THREE.MeshLambertMaterial({color:0x0a1218}));
+  cap.position.set(lx,ly+0.010+0.100+0.038+0.022+0.004,lz); zg.add(cap);
+  // 发光光晕（仅亮灯时）
+  if(fstate>0){
+    var glowCol=isFull?0x00ff66:0xffcc44;
+    var glowOp=isFull?0.30:0.18;
+    var glow=mesh(sph(0.032,8),new THREE.MeshLambertMaterial({color:glowCol,transparent:true,opacity:glowOp,depthWrite:false}));
+    glow.position.set(lx,ly+0.010+0.100+0.049,lz); zg.add(glow);
+  }
+
+  scene.add(zg);
+}
+
+
+// ─────────────────────────────────────────────────────────────
+//  BARCODE SCANNER helper
+// ─────────────────────────────────────────────────────────────
+function makeScanner(x,z,lblTxt,rotY){
+  var g=new THREE.Group();
+  var post=mesh(cyl(0.022,0.022,1.20,7),LM(0x1e3044)); post.position.y=0.6; g.add(post);
+  var neck=mesh(box(0.06,0.14,0.06),LM(0x12263a)); neck.position.set(0,1.26,0); g.add(neck);
+  var head=mesh(box(0.18,0.09,0.13),LM(0x0e1e30)); head.position.set(0,1.38,0.04); g.add(head);
+  var lens=mesh(cyl(0.028,0.022,0.04,8),LM(0x050a10)); lens.rotation.x=Math.PI/2;
+  lens.position.set(0,1.38,0.12); g.add(lens);
+  var laserMat=new THREE.MeshBasicMaterial({color:0xff2200,transparent:true,opacity:0.85});
+  var laser=mesh(box(0.35,0.003,0.003),laserMat); laser.position.set(0,1.355,0.22); g.add(laser);
+  var base=mesh(box(0.18,0.04,0.18),LM(0x0e1c2c)); base.position.y=0.02; g.add(base);
+  g.position.set(x,0,z);
+  if(rotY) g.rotation.y=rotY;
+  scene.add(g);
+  return g;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  CARTON OPENING TABLE  开箱工作台  4m，居中，近入货口
+// ─────────────────────────────────────────────────────────────
+var OT_W=4.0, OT_Z=2.26;
+var otTop=mesh(box(OT_W,0.06,0.62),LM(0x1e3848));
+otTop.position.set(0,0.95,OT_Z);scene.add(otTop);
+[OT_Z+0.30, OT_Z-0.30].forEach(function(az){
+  var ap=mesh(box(OT_W,0.08,0.025),LM(0x162838));
+  ap.position.set(0,0.88,az);scene.add(ap);
+});
+[[-1.85,OT_Z-0.27],[-1.85,OT_Z+0.27],[1.85,OT_Z-0.27],[1.85,OT_Z+0.27]].forEach(function(xz){
+  var leg=mesh(box(0.06,0.90,0.06),LM(0x0e1c2c));
+  leg.position.set(xz[0],0.45,xz[1]);scene.add(leg);
+});
+var xbar2=mesh(box(OT_W,0.04,0.04),LM(0x0a1622));
+xbar2.position.set(0,0.32,OT_Z);scene.add(xbar2);
+// Cartons on table — handled entirely in workflow section below (oc1/oc2g/r1Box/r2Box)
+
+// ── Scanner A: 工作台正中，外箱识别
+makeScanner(0,OT_Z-0.12,'扫描器A\n外箱识别',0);
+
+// ── Full Box 放置区：工作台左右两侧
+var fbMat=new THREE.MeshLambertMaterial({color:0x0e2618,emissive:new THREE.Color(0x04100a),emissiveIntensity:0.5});
+[-2.8, 2.8].forEach(function(fbx){
+  var fbp=mesh(box(0.95,0.05,0.62),fbMat);
+  fbp.position.set(fbx,0.92,OT_Z);scene.add(fbp);
+  [fbx-0.44,fbx+0.44].forEach(function(lx2){
+    [OT_Z-0.27,OT_Z+0.27].forEach(function(lz2){
+      var fleg=mesh(box(0.05,0.90,0.05),LM(0x0a1810));
+      fleg.position.set(lx2,0.45,lz2);scene.add(fleg);
+    });
+  });
+  // one empty open outer carton resting on table surface (table top y=0.945)
+  var sideBox=makeOpenBox(0.52,0.42,0.46,0,0,fbx>0?6:7);
+  sideBox.position.set(fbx,0.945,OT_Z);scene.add(sideBox);
+});
+
+// ─────────────────────────────────────────────────────────────
+//  SCANNERS B & C — 暂存区与Z区之间（分拣扫描）
+//  平面图：⊙ 在暂存台与Z区排之间，左x≈-3 右x≈+4
+// ─────────────────────────────────────────────────────────────
+makeScanner(-3.0,-1.05,'扫描器B\n内箱分区',0);
+makeScanner( 4.0,-1.05,'扫描器C\n内箱分区',0);
+
+// ─────────────────────────────────────────────────────────────
+//  CARDBOARD COMPACTORS  (2 units)
+// ─────────────────────────────────────────────────────────────
+function makeCompactor(x,lblTxt){
+  var g=new THREE.Group();
+  var body=mesh(box(0.88,1.48,0.88),LM(0x142010)); g.add(body);
+  var lid=mesh(box(0.94,0.065,0.94),LM(0x1a2e16)); lid.position.y=0.77;g.add(lid);
+  var funnel=mesh(box(0.7,0.18,0.7),LM(0x0e1c0e)); funnel.position.set(0,0.94,0);g.add(funnel);
+  var panel=mesh(box(0.88,0.28,0.06),LM(0x0d180d)); panel.position.set(0,0.04,0.45);g.add(panel);
+  // Status light on panel
+  var slt=mesh(sph(0.04,7),BM(0x002200)); slt.position.set(-0.18,0.14,0.49);g.add(slt);
+  var btn=mesh(box(0.06,0.06,0.03),LM(0x334422)); btn.position.set(0.1,0.04,0.49);g.add(btn);
+  g.position.set(x,0.74,2.7);
+  scene.add(g);
+  return g;
+}
+makeCompactor(-5.5,'压实机①\n每4箱自动触发');
+makeCompactor(5.5,'压实机②\n每4箱自动触发');
+
+// Empty carton staging pads (next to compactors)
+[[-4.2,2.9],[-3.3,2.9],[3.3,2.9],[4.2,2.9]].forEach(function(d,i){
+  var b=mesh(box(0.78,0.05,0.78),LM(0x0e1c2a)); b.position.set(d[0],0.025,d[1]);scene.add(b);
+});
+
+// ─────────────────────────────────────────────────────────────
+//  ANDON BOARD  (back wall)  — 大型生产状态看板（固定平面）
+// ─────────────────────────────────────────────────────────────
+var _aCvs=null, _aTex=null;
+function mkAndonBoard(){
+  var W=2048, H=1024;
+  var cvs=document.createElement('canvas'); cvs.width=W; cvs.height=H;
+  _aCvs=cvs;
+  var c=cvs.getContext('2d');
+  var F='"PingFang SC","Microsoft YaHei",Arial,sans-serif';
+  var now=new Date();
+  var dateStr=(now.getFullYear())+'/'+(now.getMonth()+1<10?'0':'')+(now.getMonth()+1)+'/'+(now.getDate()<10?'0':'')+now.getDate();
+  var hh=now.getHours(), mm=now.getMinutes(), ss=now.getSeconds();
+  var timeStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss;
+
+  // ── background
+  c.fillStyle='#010c1a'; c.fillRect(0,0,W,H);
+
+  // ── header (80px)
+  var grad=c.createLinearGradient(0,0,0,80);
+  grad.addColorStop(0,'#00306e'); grad.addColorStop(1,'#001840');
+  c.fillStyle=grad; c.fillRect(0,0,W,80);
+  // left: system name
+  c.fillStyle='#66bbff'; c.font='bold 32px '+F;
+  c.textAlign='left'; c.textBaseline='middle';
+  c.fillText('ANDON  ·  MES 实时监控看板', 22, 40);
+  // center: location
+  c.fillStyle='#7aadcc'; c.font='22px '+F;
+  c.textAlign='center';
+  c.fillText('视客华东仓  ·  入库收货区  ·  方案一', W/2, 40);
+  // right: date + time
+  c.fillStyle='#00eeff'; c.font='bold 30px '+F;
+  c.textAlign='right';
+  c.fillText(timeStr, W-20, 30);
+  c.fillStyle='#3a7088'; c.font='18px '+F;
+  c.fillText(dateStr+'  早班 08:00–17:00', W-20, 62);
+  // header border
+  c.strokeStyle='#0a4080'; c.lineWidth=2;
+  c.beginPath(); c.moveTo(0,81); c.lineTo(W,81); c.stroke();
+
+  // ── KPI row: 5 cells (y=83 to y=300, h=217)
+  var kpis=[
+    {lbl:'今日入库',   val:'1,247', unit:'箱', sub:'目标  1,500 箱',       vc:'#00ddaa',bg:'#001c2e',sb:'#007755'},
+    {lbl:'已分拣完成', val:'986',   unit:'箱', sub:'完成率  79%  ↑',        vc:'#44aaff',bg:'#001228',sb:'#1a5088'},
+    {lbl:'待处理',     val:'261',   unit:'箱', sub:'较昨日  +18 箱',        vc:'#ffcc33',bg:'#1a1000',sb:'#886600'},
+    {lbl:'SKU 品种数', val:'48',    unit:'种', sub:'当前批次：CL-5502 月抛', vc:'#cc88ff',bg:'#120a20',sb:'#663388'},
+    {lbl:'产线效率',   val:'94.3',  unit:'%',  sub:'班次目标  ≥ 90%',       vc:'#ff8844',bg:'#1a0e00',sb:'#884400'},
+  ];
+  var kW=W/5, kH=217, kY=83;
+  kpis.forEach(function(d,i){
+    var x=i*kW;
+    c.fillStyle=d.bg; c.fillRect(x+3,kY+3,kW-6,kH-6);
+    c.strokeStyle='#0a2244'; c.lineWidth=1.5; c.strokeRect(x+3,kY+3,kW-6,kH-6);
+    c.fillStyle=d.vc; c.fillRect(x+3,kY+3,5,kH-6);
+    // label
+    c.fillStyle='#5a8aaa'; c.font='bold 22px '+F;
+    c.textAlign='left'; c.textBaseline='top';
+    c.fillText(d.lbl, x+20, kY+14);
+    // value
+    c.fillStyle=d.vc; c.font='bold 82px '+F;
+    c.textAlign='left'; c.textBaseline='middle';
+    c.fillText(d.val, x+16, kY+130);
+    // unit
+    c.fillStyle='#5a8aaa'; c.font='bold 26px '+F;
+    c.textBaseline='middle';
+    c.fillText(d.unit, x+16+c.measureText(d.val).width+8, kY+130);
+    // sub
+    c.fillStyle=d.sb; c.font='19px '+F;
+    c.textBaseline='bottom';
+    c.fillText(d.sub, x+20, kY+kH-10);
+  });
+
+  // ── divider
+  c.strokeStyle='#06182a'; c.lineWidth=3;
+  c.beginPath(); c.moveTo(0,302); c.lineTo(W,302); c.stroke();
+
+  // ── Robot status (y=305 to y=500, h=195)
+  c.fillStyle='#010d1a'; c.fillRect(0,305,W,195);
+  c.fillStyle='#2a5577'; c.font='bold 20px '+F;
+  c.textAlign='left'; c.textBaseline='top';
+  c.fillText('▌ 设备运行状态', 18, 312);
+  var robots=[
+    {id:'R1',role:'前排 · 开箱',st:'运行中',spd:'12次/min',c:'#00ff66'},
+    {id:'R2',role:'前排 · 开箱',st:'运行中',spd:'11次/min',c:'#00ff66'},
+    {id:'R3',role:'后排 · 分拣',st:'运行中',spd:'14次/min',c:'#00ff66'},
+    {id:'R4',role:'后排 · 分拣',st:'运行中',spd:'13次/min',c:'#00ff66'},
+    {id:'R5',role:'后排 · 分拣',st:'待  机',spd:'— — —',   c:'#ffaa22'},
+    {id:'R6',role:'后排 · 分拣',st:'运行中',spd:'13次/min',c:'#00ff66'},
+  ];
+  var rW=W/6, rH=158, rY=338;
+  robots.forEach(function(r,i){
+    var rx=i*rW+6;
+    c.fillStyle='#001825'; c.fillRect(rx,rY,rW-12,rH);
+    c.strokeStyle='#0a2a3a'; c.lineWidth=1; c.strokeRect(rx,rY,rW-12,rH);
+    // glow dot
+    c.fillStyle=r.c;
+    c.beginPath(); c.arc(rx+26,rY+34,13,0,Math.PI*2); c.fill();
+    c.fillStyle='rgba(255,255,255,0.25)';
+    c.beginPath(); c.arc(rx+24,rY+31,7,0,Math.PI*2); c.fill();
+    // ID
+    c.fillStyle='#ddeeff'; c.font='bold 30px '+F;
+    c.textAlign='left'; c.textBaseline='middle';
+    c.fillText(r.id, rx+48, rY+34);
+    // role
+    c.fillStyle='#3a6a88'; c.font='17px '+F;
+    c.textAlign='left'; c.textBaseline='top';
+    c.fillText(r.role, rx+14, rY+66);
+    // status
+    c.fillStyle=r.c; c.font='bold 22px '+F;
+    c.textAlign='center'; c.textBaseline='middle';
+    c.fillText(r.st, rx+(rW-12)/2, rY+108);
+    // speed
+    c.fillStyle='#2a5566'; c.font='16px '+F;
+    c.textAlign='center'; c.textBaseline='bottom';
+    c.fillText(r.spd, rx+(rW-12)/2, rY+rH-8);
+  });
+
+  // ── divider
+  c.strokeStyle='#06182a'; c.lineWidth=3;
+  c.beginPath(); c.moveTo(0,502); c.lineTo(W,502); c.stroke();
+
+  // ── Z-zone grid (y=505 to y=940)
+  c.fillStyle='#010d1a'; c.fillRect(0,505,W,H-505);
+  c.fillStyle='#2a5577'; c.font='bold 20px '+F;
+  c.textAlign='left'; c.textBaseline='top';
+  c.fillText('▌ Z区暂存容器状态  Z1 – Z18', 18, 512);
+  // legend
+  var legends=[{c:'#0a1a2a',l:'空'},{c:'#1a4a6a',l:'散货部分'},{c:'#1a5a3a',l:'整货部分'},{c:'#00bb44',l:'散货满 ●'},{c:'#00cc88',l:'整货满 ●'}];
+  legends.forEach(function(lg,li){
+    c.fillStyle=lg.c; c.fillRect(W-540+li*102,512,18,18);
+    c.strokeStyle='#224'; c.lineWidth=1; c.strokeRect(W-540+li*102,512,18,18);
+    c.fillStyle='#4a7799'; c.font='15px '+F;
+    c.textAlign='left'; c.textBaseline='top';
+    c.fillText(lg.l, W-518+li*102, 513);
+  });
+  var zstates=[3,1,0,2,3,1,4,0,1,3,2,1,0,4,1,3,0,2];
+  var zColors={0:'#0a1a2a',1:'#1a4a6a',2:'#1a5a3a',3:'#009933',4:'#00bb77'};
+  var zLabels={0:'空',1:'散货',2:'整货',3:'散货满',4:'整货满'};
+  var zgW=106, zgH=88, zgGap=8, zgX0=12, zgY0=538;
+  zstates.forEach(function(s,i){
+    var col=i%9, row=Math.floor(i/9);
+    var zx=zgX0+col*(zgW+zgGap), zy=zgY0+row*(zgH+zgGap);
+    c.fillStyle=zColors[s]; c.fillRect(zx,zy,zgW,zgH);
+    c.strokeStyle=s>=3?'#00ff66':'#0a2a3a'; c.lineWidth=s>=3?2.5:1;
+    c.strokeRect(zx,zy,zgW,zgH);
+    // LED
+    c.fillStyle=s>=3?'#00ff44':'#0a1a0a';
+    c.beginPath(); c.arc(zx+zgW-13,zy+13,7,0,Math.PI*2); c.fill();
+    // Z label
+    c.fillStyle='#88bbdd'; c.font='bold 18px '+F;
+    c.textAlign='left'; c.textBaseline='top';
+    c.fillText('Z'+(i+1), zx+8, zy+8);
+    // status
+    c.fillStyle=s>=3?'#00ff88':'#3a6a88'; c.font='bold 16px '+F;
+    c.textAlign='center'; c.textBaseline='middle';
+    c.fillText(zLabels[s], zx+zgW/2, zy+zgH*0.68);
+  });
+
+  // ── bottom status bar (y=H-58 to H)
+  c.strokeStyle='#0a2a44'; c.lineWidth=2;
+  c.beginPath(); c.moveTo(0,H-58); c.lineTo(W,H-58); c.stroke();
+  c.fillStyle='#000d0a'; c.fillRect(0,H-57,W,57);
+  // system ok
+  c.fillStyle='#22ee55'; c.font='bold 22px '+F;
+  c.textAlign='left'; c.textBaseline='middle';
+  c.fillText('● 系统正常运行', 18, H-28);
+  // subsystem status
+  var subs=['传送带A ● 正常','传送带B ● 正常','压实机① ● 正常','压实机② ● 正常','扫码器A ● 在线','扫码器B ● 在线','扫码器C ● 在线'];
+  c.fillStyle='#2a6677'; c.font='18px '+F;
+  c.textAlign='center';
+  c.fillText(subs.join('    '), W/2, H-28);
+  // right: efficiency + time
+  c.fillStyle='#3a8866'; c.font='bold 20px '+F;
+  c.textAlign='right';
+  c.fillText('产线效率 94.3%    刷新 '+timeStr, W-18, H-28);
+
+  var tex=new THREE.CanvasTexture(cvs);
+  _aTex=tex;
+  tex.needsUpdate=true;
+  var geo=new THREE.PlaneGeometry(1,1);
+  var mat=new THREE.MeshBasicMaterial({map:tex,transparent:false});
+  return new THREE.Mesh(geo,mat);
+}
+function _updateAndonClock(){
+  if(!_aCvs||!_aTex) return;
+  var cvs=_aCvs, c=cvs.getContext('2d'), W=cvs.width, H=cvs.height;
+  var F='"PingFang SC","Microsoft YaHei",Arial,sans-serif';
+  var now=new Date();
+  var hh=now.getHours(), mm=now.getMinutes(), ss=now.getSeconds();
+  var timeStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss;
+  // erase header right area and redraw time
+  var grad=c.createLinearGradient(0,0,0,80);
+  grad.addColorStop(0,'#00306e'); grad.addColorStop(1,'#001840');
+  c.fillStyle=grad; c.fillRect(W-460,0,460,80);
+  c.fillStyle='#00eeff'; c.font='bold 30px '+F;
+  c.textAlign='right'; c.textBaseline='middle';
+  c.fillText(timeStr, W-20, 30);
+  var dateStr=(now.getFullYear())+'/'+(now.getMonth()+1<10?'0':'')+(now.getMonth()+1)+'/'+(now.getDate()<10?'0':'')+now.getDate();
+  c.fillStyle='#3a7088'; c.font='18px '+F;
+  c.fillText(dateStr+'  早班 08:00–17:00', W-20, 62);
+  // erase bottom-right time and redraw
+  c.fillStyle='#000d0a'; c.fillRect(W-380,H-58,380,58);
+  c.fillStyle='#3a8866'; c.font='bold 20px '+F;
+  c.textAlign='right'; c.textBaseline='middle';
+  c.fillText('产线效率 94.3%    刷新 '+timeStr, W-18, H-28);
+  _aTex.needsUpdate=true;
+}
+setInterval(_updateAndonClock, 1000);
+var aBgW=5.6, aBgH=2.1, aY=4.15, aZ=-5.44;
+// outer shell
+var aBg=mesh(box(aBgW+0.24,aBgH+0.24,0.12),LM(0x030810)); aBg.position.set(0,aY,aZ-0.07);scene.add(aBg);
+// LED-glow frame
+var aFr=mesh(box(aBgW+0.08,aBgH+0.08,0.08),new THREE.MeshLambertMaterial({
+  color:0x002255,emissive:new THREE.Color(0x001133),emissiveIntensity:0.8}));
+aFr.position.set(0,aY,aZ-0.03);scene.add(aFr);
+// screen backing
+var aScr=mesh(box(aBgW,aBgH,0.03),new THREE.MeshLambertMaterial({
+  color:0x000810,emissive:new THREE.Color(0x000610),emissiveIntensity:1}));
+aScr.position.set(0,aY,aZ);scene.add(aScr);
+// fixed canvas plane
+var aBoard=mkAndonBoard(); aBoard.scale.set(aBgW,aBgH,1);
+aBoard.position.set(0,aY,aZ+0.06);scene.add(aBoard);
+// traffic lights (right edge, vertically stacked)
+[{dy:0.56,c:0x00ff55,e:0x007722},{dy:0,c:0x332200,e:0x000000},{dy:-0.56,c:0x220000,e:0x000000}].forEach(function(d){
+  var lm=new THREE.MeshLambertMaterial({color:d.c,emissive:new THREE.Color(d.e),emissiveIntensity:1.2});
+  var dot=mesh(sph(0.10,10),lm); dot.position.set(aBgW/2+0.26,aY+d.dy,aZ+0.06);scene.add(dot);
+  var hou=mesh(box(0.16,0.16,0.08),LM(0x080f18)); hou.position.set(aBgW/2+0.26,aY+d.dy,aZ);scene.add(hou);
+});
+
+// ─────────────────────────────────────────────────────────────
+//  LOADING BAY  入货口  (left end of front conveyor)
+// ─────────────────────────────────────────────────────────────
+[-0.3,0.3].forEach(function(sz){
+  var post=mesh(box(0.07,1.6,0.07),LM(0x1e3a50)); post.position.set(-7.12,0.8,sz+1.45);scene.add(post);
+});
+var gBar=mesh(box(0.07,0.07,0.65),LM(0x2a5070)); gBar.position.set(-7.12,1.6,1.45);scene.add(gBar);
+
+// Arrow on floor showing carton travel direction
+var arrowGeo=new THREE.ConeGeometry(0.12,0.35,6); arrowGeo.rotateZ(-Math.PI/2);
+var arw=mesh(arrowGeo,BM(0x1a4466)); arw.position.set(-5.5,0.025,1.45);scene.add(arw);
+var arwLine=mesh(box(1.8,0.02,0.04),BM(0x1a4466)); arwLine.position.set(-6.5,0.025,1.45);scene.add(arwLine);
+
+
+// ─────────────────────────────────────────────────────────────
+//  WORKFLOW EFFECTS  作业流程四阶段示意（精简版）
+// ─────────────────────────────────────────────────────────────
+var cvTop=tabTop+STAB_TOP;  // 操作台面高度
+var tableTop=0.975;     // 开箱工作台面
+
+// 开口箱体工厂函数（四壁+底+翻盖展开，纸板纹理 + 胶带 + 出货标签）
+function makeOpenBox(bW,bH,bD,_unused1,_unused2,cbSeed){
+  var g=new THREE.Group();
+  var s=cbSeed||0;
+  var bm=_cbMats[s%4], bm2=_cbMats[(s+1)%4];
+  var th=0.012; // wall thickness
+  // Bottom
+  var bot=mesh(box(bW,th,bD),bm); bot.position.set(0,th/2,0); g.add(bot);
+  // Four walls (each face gets its own variant for subtle colour diff)
+  var wF=mesh(box(bW,bH,th),bm);  wF.position.set(0,bH/2, bD/2); g.add(wF);
+  var wB=mesh(box(bW,bH,th),bm2); wB.position.set(0,bH/2,-bD/2); g.add(wB);
+  var wL=mesh(box(th,bH,bD),bm2); wL.position.set(-bW/2,bH/2,0); g.add(wL);
+  var wR=mesh(box(th,bH,bD),bm);  wR.position.set( bW/2,bH/2,0); g.add(wR);
+  // Flaps (opened/folded out)
+  var fpF=mesh(box(bW,th,bD*0.46),bm);  fpF.position.set(0,bH+bD*0.12, bD/2+bD*0.14); fpF.rotation.x=-0.42; g.add(fpF);
+  var fpB=mesh(box(bW,th,bD*0.46),bm2); fpB.position.set(0,bH+bD*0.12,-bD/2-bD*0.14); fpB.rotation.x= 0.42; g.add(fpB);
+  var fpL=mesh(box(bW*0.46,th,bD),bm2); fpL.position.set(-bW/2-bW*0.14,bH+bW*0.12,0); fpL.rotation.z= 0.42; g.add(fpL);
+  var fpR=mesh(box(bW*0.46,th,bD),bm);  fpR.position.set( bW/2+bW*0.14,bH+bW*0.12,0); fpR.rotation.z=-0.42; g.add(fpR);
+  // Crease lines at flap base (dark thin strips)
+  var crM=new THREE.MeshLambertMaterial({color:0x3a2510});
+  var crF=mesh(box(bW+0.002,0.006,0.006),crM); crF.position.set(0,bH, bD/2); g.add(crF);
+  var crB=mesh(box(bW+0.002,0.006,0.006),crM); crB.position.set(0,bH,-bD/2); g.add(crB);
+  var crL=mesh(box(0.006,0.006,bD+0.002),crM); crL.position.set(-bW/2,bH,0); g.add(crL);
+  var crR=mesh(box(0.006,0.006,bD+0.002),crM); crR.position.set( bW/2,bH,0); g.add(crR);
+  // Shipping label on front face
+  var lbG=new THREE.PlaneGeometry(bW*0.78,bH*0.55);
+  var lb=new THREE.Mesh(lbG,_labelMat); lb.position.set(0,bH*0.38,bD/2+0.007); g.add(lb);
+  // Vertical corner edge reinforcements (darker strip)
+  var edgeM=new THREE.MeshLambertMaterial({color:0x4a3018});
+  [[-bW/2,bD/2],[bW/2,bD/2],[-bW/2,-bD/2],[bW/2,-bD/2]].forEach(function(xz){
+    var e=mesh(box(0.014,bH+0.01,0.014),edgeM); e.position.set(xz[0],bH/2,xz[1]); g.add(e);
+  });
+  return g;
+}
+
+// 封闭外箱（带纹理 + 胶带 + 标签）
+function makeClosedBox(bW,bH,bD,cbSeed){
+  var s=cbSeed||0;
+  var g=new THREE.Group();
+  var bm=_cbMats[s%4], bm2=_cbMats[(s+2)%4];
+  // Body (use PlaneGeometry per face for different textures on each side)
+  // Simpler: use a single BoxGeometry with one material, add details on top
+  var body=mesh(box(bW,bH,bD),bm); body.position.set(0,bH/2,0); g.add(body);
+  // Top tape strip (along z seam)
+  var tapeW=mesh(box(bW+0.004,0.013,0.05),_tapeMat); tapeW.position.set(0,bH+0.006,0); g.add(tapeW);
+  // Top tape strip (along x seam)
+  var tapeD=mesh(box(0.05,0.013,bD+0.004),_tapeMat); tapeD.position.set(0,bH+0.006,0); g.add(tapeD);
+  // Label on front face
+  var lbG=new THREE.PlaneGeometry(bW*0.76,bH*0.52);
+  var lb=new THREE.Mesh(lbG,_labelMat); lb.position.set(0,bH*0.38,bD/2+0.007); g.add(lb);
+  // Corner edge reinforcements
+  var edgeM=new THREE.MeshLambertMaterial({color:0x4a3018});
+  [[-bW/2,bD/2],[bW/2,bD/2],[-bW/2,-bD/2],[bW/2,-bD/2]].forEach(function(xz){
+    var e=mesh(box(0.014,bH,0.014),edgeM); e.position.set(xz[0],bH/2,xz[1]); g.add(e);
+  });
+  return g;
+}
+
+// ① 开外箱：开箱工作台上 — 4个外箱均匀排列，间距1m，无重叠
+// x=-1.5: r1Box(下方定义)  x=-0.5: 开启中  x=0.5: 未开封  x=1.5: r2Box(下方定义)
+var oc1=makeOpenBox(0.52,0.42,0.46,0,0,0);
+var innerVis=mesh(box(0.38,0.22,0.32),new THREE.MeshLambertMaterial({color:0x2a3a5a})); innerVis.position.set(0,0.14,0); oc1.add(innerVis);
+oc1.position.set(-0.5, tableTop, OT_Z); scene.add(oc1);
+// 未开封外箱（等待处理）
+var oc2g=makeClosedBox(0.52,0.42,0.46,2); oc2g.position.set(0.5,tableTop,OT_Z); scene.add(oc2g);
+var oc2=oc2g;
+
+// ── R1 正在处理的开箱（开箱台左侧，R1工作位 x=-1.5 正前方）──
+var r1Box=makeOpenBox(0.52,0.42,0.46,0,0,1);
+// 内盒已露出
+var r1Inner=mesh(box(0.36,0.20,0.30),LM(0x263650)); r1Inner.position.set(0,0.13,0); r1Box.add(r1Inner);
+// 散货小包（内盒里面的隐形眼镜包装）
+[[-0.09,-0.08],[0,-0.04],[0.09,-0.08],[-0.04,0.06]].forEach(function(xz){
+  var pk=mesh(box(0.062,0.028,0.045),LM(0x1a3a6e));
+  pk.position.set(xz[0],0.24,xz[1]); r1Box.add(pk);
+});
+/// R1 box at EE position: shldr=1.3,elbow=1.3,wrist=-0.7 → EE≈(x,1.34,2.19)
+r1Box.position.set(-1.5, tableTop, 2.19); scene.add(r1Box);
+
+// ── R2 已开完的外箱留在工作台右侧（R2已取出内盒，外箱空置）──
+var r2Box=makeOpenBox(0.52,0.42,0.46,0,0,2);
+// 外箱内部已空（内盒已被取走），仅剩零散小包
+[[-0.09,-0.08],[0.09,-0.08]].forEach(function(xz){
+  var pk=mesh(box(0.062,0.028,0.045),LM(0x1a3a6e)); pk.position.set(xz[0],0.24,xz[1]); r2Box.add(pk);
+});
+r2Box.position.set(1.5, tableTop, OT_Z); scene.add(r2Box);
+
+// 吸盘作业光晕 — 位于实际EE位置 (x, 1.34, 2.19)
+var eeGlowMat=new THREE.MeshLambertMaterial({color:0x00ddff,transparent:true,opacity:0.55,depthWrite:false});
+var eeGlow=mesh(sph(0.062,8),eeGlowMat); eeGlow.position.set(-1.5,1.34,2.19); scene.add(eeGlow);
+var eeGlow2=mesh(sph(0.11,8),new THREE.MeshLambertMaterial({color:0x0088cc,transparent:true,opacity:0.18,depthWrite:false}));
+eeGlow2.position.copy(eeGlow.position); scene.add(eeGlow2);
+
+// 箱体"正在处理"橙色光晕
+var boxGlow=mesh(sph(0.22,8),new THREE.MeshLambertMaterial({color:0xff6600,transparent:true,opacity:0.16,depthWrite:false}));
+boxGlow.position.set(-1.5,tableTop+0.21,2.19); scene.add(boxGlow);
+
+// 吸盘作用线（从EE向下到箱面）
+addLine(-1.5,1.34,2.19,-1.5,tableTop+0.42,2.19,0x00aacc);
+
+// R2 举着内盒放置到暂存区 — EE≈(2.5,1.47,1.02)，朝暂存区方向（-z）
+// 内盒（夹持中）：纸板纹理，位于EE正下方
+var r2InnerHeld=makeClosedBox(0.28,0.18,0.24,5);
+r2InnerHeld.position.set(2.5,1.40,0.86); scene.add(r2InnerHeld);
+// EE光晕（橙色 = 放置中）
+var r2EeGlow=mesh(sph(0.062,8),new THREE.MeshLambertMaterial({color:0xff8800,transparent:true,opacity:0.60,depthWrite:false}));
+r2EeGlow.position.set(2.5,1.47,0.86); scene.add(r2EeGlow);
+var r2EeGlow2=mesh(sph(0.11,8),new THREE.MeshLambertMaterial({color:0xcc5500,transparent:true,opacity:0.18,depthWrite:false}));
+r2EeGlow2.position.copy(r2EeGlow.position); scene.add(r2EeGlow2);
+// 放置轨迹线：EE → 暂存台目标位置（示意送至暂存区）
+addLine(2.5,1.46,0.86, 2.5,cvTop+0.24,0.0, 0xff8844);
+
+// ② 暂存区：内盒已在 STAGING AREA 部分统一铺满，此处无需重复
+
+// ── R4 从暂存区拾取内盒 — EE≈(-1.5, 1.47, -1.06) ──
+var r4InnerBox=makeClosedBox(0.28,0.18,0.24,3);
+r4InnerBox.position.set(-1.5, 1.40, -1.06); scene.add(r4InnerBox);
+var r4Glow=mesh(sph(0.075,8),new THREE.MeshLambertMaterial({color:0x00ff88,transparent:true,opacity:0.65,depthWrite:false}));
+r4Glow.position.set(-1.5, 1.47, -1.06); scene.add(r4Glow);
+var r4Glow2=mesh(sph(0.14,8),new THREE.MeshLambertMaterial({color:0x00cc44,transparent:true,opacity:0.22,depthWrite:false}));
+r4Glow2.position.copy(r4Glow.position); scene.add(r4Glow2);
+// 拾取轨迹线：EE → 暂存台目标箱顶（示意方向）
+addLine(-1.5,1.46,-1.06, -1.0,cvTop+0.24,0.0, 0x00ff66);
+
+// ── R5 将内盒放入Z区容器 — EE≈(2.5, 1.77, -2.16) ──
+var r5PlaceBox=makeClosedBox(0.28,0.18,0.24,4);
+r5PlaceBox.position.set(2.5, 1.65, -2.16); scene.add(r5PlaceBox);
+var r5Glow=mesh(sph(0.075,8),new THREE.MeshLambertMaterial({color:0xff8800,transparent:true,opacity:0.65,depthWrite:false}));
+r5Glow.position.set(2.5, 1.77, -2.16); scene.add(r5Glow);
+var r5Glow2=mesh(sph(0.14,8),new THREE.MeshLambertMaterial({color:0xcc5500,transparent:true,opacity:0.22,depthWrite:false}));
+r5Glow2.position.copy(r5Glow.position); scene.add(r5Glow2);
+// 放置轨迹线：EE → Z11容器开口（示意方向）
+var z11x=ZX0+10*ZSP;
+addLine(2.5,1.77,-2.16, z11x,1.44,ZZ, 0xff8844);
+
+// ③ R3-R6在暂存区开内盒·散货外露
+var oc3=makeOpenBox(0.34,0.24,0.32,0x253520,0x324428);
+var pkM3=new THREE.MeshLambertMaterial({color:0x1a3a6e});
+var dmM3=new THREE.MeshLambertMaterial({color:0x88bbcc,transparent:true,opacity:0.72});
+[[-0.10,-0.08],[0,-0.05],[0.10,-0.08],[-0.04,0.07],[0.06,0.07]].forEach(function(xz){
+  var pk=mesh(box(0.064,0.030,0.048),pkM3); pk.position.set(xz[0],0.034,xz[1]); oc3.add(pk);
+  var dm=mesh(sph(0.014,5),dmM3); dm.position.set(xz[0],0.052,xz[1]); oc3.add(dm);
+});
+oc3.position.set(0.5, cvTop+0.005, -0.05); scene.add(oc3);
+
+// ④ 上架：散货正降入Z8，整货正降入Z15
+var z8x=ZX0+7*ZSP;
+var land1=mesh(box(0.066,0.030,0.048),new THREE.MeshLambertMaterial({color:0x22ee66,transparent:true,opacity:0.88}));
+land1.position.set(z8x, SHELFY+0.55, ZZ); scene.add(land1);
+var lg1=mesh(sph(0.052,7),new THREE.MeshLambertMaterial({color:0x00ff44,transparent:true,opacity:0.22}));
+lg1.position.copy(land1.position); scene.add(lg1);
+addLine(z8x,SHELFY+0.56,ZZ, z8x,SHELFY+0.58+0.015,ZZ,0x00ff44);
+
+var z15x=ZX0+14*ZSP;
+var land2=mesh(box(0.30,0.20,0.28),new THREE.MeshLambertMaterial({color:0x33ee66,transparent:true,opacity:0.85}));
+land2.position.set(z15x, SHELFY+0.58, ZZ); scene.add(land2);
+var lg2=mesh(sph(0.060,7),new THREE.MeshLambertMaterial({color:0x22ff55,transparent:true,opacity:0.20}));
+lg2.position.copy(land2.position); scene.add(lg2);
+addLine(z15x,SHELFY+0.60,ZZ, z15x,SHELFY+0.60+0.015,ZZ,0x22ff55);
+
+// ─────────────────────────────────────────────────────────────
+//  DIMENSION LINES
+// ─────────────────────────────────────────────────────────────
+// 15m width (front edge)
+addLine(-7.5,0.04,3.8,7.5,0.04,3.8,0x1a5566);
+addLine(-7.5,0.04,3.6,-7.5,0.04,4.0,0x1a5566);
+addLine(7.5,0.04,3.6,7.5,0.04,4.0,0x1a5566);
+var dimW=mkLbl('← 15 m →',13,'#2a8899'); dimW.scale.set(1.4,0.3,1); dimW.position.set(0,0.42,4.0);scene.add(dimW);
+
+// 7m depth (left edge)
+addLine(-8.0,0.04,-3.5,-8.0,0.04,3.5,0x1a5566);
+addLine(-8.2,0.04,-3.5,-7.8,0.04,-3.5,0x1a5566);
+addLine(-8.2,0.04,3.5,-7.8,0.04,3.5,0x1a5566);
+var dimD=mkLbl('← 7 m →',13,'#2a8899'); dimD.scale.set(1.0,0.3,1); dimD.position.set(-8.4,0.42,0);scene.add(dimD);
+
+// Conveyor spacing labels (right side)
+addLine(7.7,1.0,-1.65,7.7,1.0,0,0x1a4455);
+addLine(7.5,1.0,-1.65,7.9,1.0,-1.65,0x1a4455);
+addLine(7.5,1.0,0,7.9,1.0,0,0x1a4455);
+var dimCV=mkLbl('1.65m',10,'#1a6677'); dimCV.scale.set(0.7,0.24,1); dimCV.position.set(8.2,1.0,-0.82);scene.add(dimCV);
+
+// ─────────────────────────────────────────────────────────────
+//  FRONT SAFETY FENCE  前方安全围栏（U形绕开压实机，围住R1/R2导轨）
+//
+//  Layout (top view, z increases toward viewer):
+//
+//  x=-7.38 ─── z=2.88 outer ─── x=-6.1 ┐
+//                                         │ perp (x=-6.1, z:2.88→1.70)
+//                  [COMPACTOR x=-5.5]     │
+//                                         └─── z=1.70 center ───┐  (x=-6.1→+6.1)
+//                  [ROBOT RAIL z=1.45]                          │
+//                                         ┌─── z=1.70 center ───┘
+//                  [COMPACTOR x=+5.5]     │
+//                                         │ perp (x=+6.1, z:1.70→2.88)
+//  x=+7.38 ─── z=2.88 outer ─── x=+6.1 ┘
+// ─────────────────────────────────────────────────────────────
+(function buildFrontFence(){
+  var FH=1.85;
+  var ZOUT=2.88;   // outer z (level with side fence front post)
+  var ZIN =1.70;   // inner z (between robot rail z=1.45 and opening table z=2.26)
+  var XBYP=6.1;    // x bypass (just outside compactor edge: compactor spans x ±4.975–±6.025)
+  var SX  =7.38;   // side wall x
+
+  var fPostMat=new THREE.MeshLambertMaterial({color:0xddaa00,emissive:new THREE.Color(0x443300),emissiveIntensity:0.4});
+  var fRailMat=new THREE.MeshLambertMaterial({color:0xbbaa22,emissive:new THREE.Color(0x332200),emissiveIntensity:0.3});
+  var fMeshMat=new THREE.MeshLambertMaterial({color:0xccaa00,transparent:true,opacity:0.13,depthWrite:false,side:THREE.DoubleSide});
+  var fEdgeMat=new THREE.LineBasicMaterial({color:0x998800,transparent:true,opacity:0.45});
+  var kpMat  =new THREE.MeshLambertMaterial({color:0x776600});
+
+  function fPost(x,z){
+    var p=mesh(box(0.055,FH,0.055),fPostMat); p.position.set(x,FH/2,z); scene.add(p);
+  }
+  // Horizontal panel + rails (runs along X axis)
+  function fPanelX(x0,x1,z){
+    var w=Math.abs(x1-x0), cx=(x0+x1)/2;
+    var g=new THREE.BoxGeometry(w-0.06,FH-0.06,0.025);
+    var pm=mesh(g,fMeshMat); pm.position.set(cx,FH/2,z); scene.add(pm);
+    var pe=new THREE.LineSegments(new THREE.EdgesGeometry(g),fEdgeMat); pe.position.set(cx,FH/2,z); scene.add(pe);
+    [0.06,FH*0.5,FH-0.06].forEach(function(ry){
+      var r=mesh(new THREE.BoxGeometry(w+0.04,0.028,0.028),fRailMat); r.position.set(cx,ry,z); scene.add(r);
+    });
+    var kp=mesh(box(w,0.12,0.04),kpMat); kp.position.set(cx,0.06,z); scene.add(kp);
+  }
+  // Perpendicular panel + rails (runs along Z axis)
+  function fPanelZ(x,z0,z1){
+    var d=Math.abs(z1-z0), cz=(z0+z1)/2;
+    var g=new THREE.BoxGeometry(0.025,FH-0.06,d-0.06);
+    var pm=mesh(g,fMeshMat); pm.position.set(x,FH/2,cz); scene.add(pm);
+    var pe=new THREE.LineSegments(new THREE.EdgesGeometry(g),fEdgeMat); pe.position.set(x,FH/2,cz); scene.add(pe);
+    [0.06,FH*0.5,FH-0.06].forEach(function(ry){
+      var r=mesh(new THREE.BoxGeometry(0.028,0.028,d+0.04),fRailMat); r.position.set(x,ry,cz); scene.add(r);
+    });
+  }
+
+  // ── Left outer (z=ZOUT, x: -SX → -XBYP)
+  fPost(-SX,  ZOUT); fPost(-XBYP, ZOUT);
+  fPanelX(-SX, -XBYP, ZOUT);
+
+  // ── Left perpendicular bypass (x=-XBYP, z: ZOUT → ZIN)
+  fPost(-XBYP, ZIN);
+  fPanelZ(-XBYP, ZIN, ZOUT);
+
+  // ── Center inner fence (z=ZIN) — 4m gap at opening table ends (x=±2.0)
+  //    Left section: x=-XBYP → x=-2.0  |  gap: x=-2.0 → +2.0  |  Right: x=+2.0 → +XBYP
+  var OTH=2.0;  // opening table half-width (table is 4m, centered at x=0)
+  fPost(-OTH, ZIN); fPost(OTH, ZIN); fPost(XBYP, ZIN);
+  fPanelX(-XBYP, -OTH, ZIN);   // left section
+  fPanelX( OTH,  XBYP, ZIN);   // right section
+  // no fence from x=-OTH to x=+OTH → robot arm working clearance
+
+  // ── Right perpendicular bypass (x=+XBYP, z: ZIN → ZOUT)
+  fPanelZ(XBYP, ZIN, ZOUT);
+
+  // ── Right outer (z=ZOUT, x: +XBYP → +SX)
+  fPost(SX, ZOUT);
+  fPanelX(XBYP, SX, ZOUT);
+
+  // ── Floor warning stripe along inner fence
+  var warnF=mesh(box(XBYP*2,0.008,0.10),new THREE.MeshLambertMaterial({color:0x887700}));
+  warnF.position.set(0,0.005,ZIN-0.08); scene.add(warnF);
+})();
+
+// ─────────────────────────────────────────────────────────────
+//  SAFETY FENCE  安全围栏（两侧）
+// ─────────────────────────────────────────────────────────────
+(function buildFence(){
+  var FH=1.85;          // fence height
+  var FX_L=-7.38;       // left fence x
+  var FX_R= 7.38;       // right fence x
+  // post z positions: new back wall → front compactor line (corridor included)
+  var postZ=[-5.28, -3.28, -1.55, 0.0, 1.58, 2.88];
+  // materials
+  var postMat=new THREE.MeshLambertMaterial({
+    color:0xddaa00, emissive:new THREE.Color(0x443300), emissiveIntensity:0.4
+  });
+  var railMat=new THREE.MeshLambertMaterial({
+    color:0xbbaa22, emissive:new THREE.Color(0x332200), emissiveIntensity:0.3
+  });
+  var meshMat=new THREE.MeshLambertMaterial({
+    color:0xccaa00, transparent:true, opacity:0.13,
+    depthWrite:false, side:THREE.DoubleSide
+  });
+  var meshEdge=new THREE.LineBasicMaterial({color:0x998800, transparent:true, opacity:0.45});
+
+  [FX_L, FX_R].forEach(function(fx){
+    // posts
+    postZ.forEach(function(pz){
+      var p=mesh(box(0.055, FH, 0.055), postMat);
+      p.position.set(fx, FH/2, pz); scene.add(p);
+    });
+    // panels between consecutive posts
+    for(var i=0;i<postZ.length-1;i++){
+      var z0=postZ[i], z1=postZ[i+1];
+      var pLen=z1-z0;
+      var pCz=(z0+z1)/2;
+      // mesh fill
+      var pg=box(0.025, FH-0.06, pLen-0.06);
+      var pm=mesh(pg, meshMat); pm.position.set(fx, FH/2, pCz); scene.add(pm);
+      // edge outline
+      var pe=new THREE.LineSegments(new THREE.EdgesGeometry(pg), meshEdge);
+      pe.position.set(fx, FH/2, pCz); scene.add(pe);
+      // horizontal rails: top and ~mid
+      [0.06, FH*0.50, FH-0.06].forEach(function(ry){
+        var rg=box(0.028, 0.028, pLen+0.04);
+        var r=mesh(rg, railMat); r.position.set(fx, ry, pCz); scene.add(r);
+      });
+    }
+  });
+
+  // kick-plate at base (yellow-black warning stripe) on outside face of each side
+  [FX_L, FX_R].forEach(function(fx){
+    var totalLen=postZ[postZ.length-1]-postZ[0];
+    var kpCz=(postZ[0]+postZ[postZ.length-1])/2;
+    var kpMat=new THREE.MeshLambertMaterial({color:0x776600});
+    var kp=mesh(box(0.04, 0.12, totalLen), kpMat);
+    kp.position.set(fx, 0.06, kpCz); scene.add(kp);
+  });
+})();
+
+// ─────────────────────────────────────────────────────────────
+//  CAMERA PRESETS
+// ─────────────────────────────────────────────────────────────
+var CAMS={
+  iso:  {p:[9,11,9],    t:[-1,1.5,-1]},   // front-right: R1/R2 in foreground, Z zones at back
+  top:  {p:[0,26,0.01], t:[0,0,-1]},       // top-down (higher to cover corridor)
+  zside:{p:[0,8,-14],   t:[0,2,-1]},       // from Andon/corridor side
+  load: {p:[0,8,12],    t:[0,2,0]},        // from loading side
+  side: {p:[15,8,-1],   t:[0,2,-1]},       // right side view
+};
+var curCam='iso';
+
+function setCam(key){
+  curCam=key;
+  var c=CAMS[key];
+  camera.position.set(c.p[0],c.p[1],c.p[2]);
+  controls.target.set(c.t[0],c.t[1],c.t[2]);
+  controls.update();
+  // Update button styles
+  ['iso','top','zside','load','side','robot'].forEach(function(k){
+    var el=document.getElementById('b-'+k);
+    if(el) el.className=k===key?'act':'';
+  });
+}
+
+setCam('iso');
+
+// ─────────────────────────────────────────────────────────────
+//  EQUIPMENT HIGHLIGHT SYSTEM
+// ─────────────────────────────────────────────────────────────
+var EOVL={};
+var _activeBtn=null;
+
+// ── Popup label (shown when equipment is highlighted)
+var _popCvs=document.createElement('canvas'); _popCvs.width=900; _popCvs.height=180;
+var _popTex=new THREE.CanvasTexture(_popCvs);
+var _popSp=new THREE.Sprite(new THREE.SpriteMaterial({map:_popTex,transparent:true,depthTest:false}));
+_popSp.visible=false; scene.add(_popSp);
+
+var EINFO={
+  'R1':    {txt:'R1  ·  7轴协作机器人\n前排开箱机器人', x:-1.5, y:2.6, z:1.45},
+  'R2':    {txt:'R2  ·  7轴协作机器人\n前排开箱机器人', x:2.5,  y:2.6, z:1.45},
+  'R3':    {txt:'R3  ·  7轴协作机器人\n后排分拣  Z1–Z4', x:-5.5, y:2.6, z:-1.65},
+  'R4':    {txt:'R4  ·  7轴协作机器人\n后排分拣  Z5–Z9', x:-1.5, y:2.6, z:-1.65},
+  'R5':    {txt:'R5  ·  7轴协作机器人\n后排分拣  Z10–Z14', x:2.5,  y:2.6, z:-1.65},
+  'R6':    {txt:'R6  ·  7轴协作机器人\n后排分拣  Z15–Z18', x:5.5,  y:2.6, z:-1.65},
+  'RAIL_F':{txt:'第7轴导轨  /  前排\nR1/R2  可移动范围  13.6m', x:0, y:2.0, z:1.51},
+  'RAIL_R':{txt:'第7轴导轨  /  后排\nR3–R6  可移动范围  13.6m', x:0, y:2.0, z:-1.71},
+  'CV_RCV':{txt:'入货·开箱传送带\n入库收货主传送带', x:0, y:1.9, z:1.45},
+  'CV_SRT':{txt:'分拣·上架传送带\n内箱分区上架传送带', x:0, y:1.9, z:-1.65},
+  'TABLE': {txt:'开箱工作台  4m\n外箱人工开箱处理台', x:0, y:1.9, z:2.26},
+  'STAGE': {txt:'暂存区操作台  S1–S18\n内箱暂存放置平台', x:0, y:1.8, z:0},
+  'SCAN_A':{txt:'扫描器A  ·  外箱识别\n开箱台居中，外箱条码扫描', x:0, y:2.2, z:2.14},
+  'SCAN_B':{txt:'扫描器B  ·  内箱分区扫描\n暂存区与Z区之间（左侧）', x:-3.0, y:2.2, z:-1.05},
+  'SCAN_C':{txt:'扫描器C  ·  内箱分区扫描\n暂存区与Z区之间（右侧）', x:4.0,  y:2.2, z:-1.05},
+  'COMP1': {txt:'纸箱压实机①\n每4箱自动触发压缩', x:-5.5, y:2.2, z:2.7},
+  'COMP2': {txt:'纸箱压实机②\n每4箱自动触发压缩', x:5.5,  y:2.2, z:2.7},
+  'ANDON': {txt:'Andon 看板  ·  MES实时监控\n生产状态·设备状态·Z区容量', x:0, y:5.2, z:-5.2},
+  'Z1_4':  {txt:'Z1–Z4  暂存容器\nR3 负责区域', x:-5.5, y:2.0, z:-2.85},
+  'Z5_14': {txt:'Z5–Z14  暂存容器\nR4 / R5 负责区域', x:0, y:2.0, z:-2.85},
+  'Z15_18'  :{txt:'Z15–Z18  暂存容器\nR6 负责区域', x:5.5, y:2.0, z:-2.85},
+  'CORRIDOR':{txt:'取货通道\n工人从Z区取货 → 重力货架上架', x:0, y:1.6, z:-4.5},
+  'SIGLAMP':{txt:'状态信号灯  ·  Z1–Z18\n绿=满载  橙=半满  暗=空置', x:0, y:2.2, z:-2.85},
+  'FENCE_F':{txt:'前排安全围栏  ·  U形设计\n围住R1/R2导轨  · 预留7轴操作口（4m）', x:0, y:2.8, z:2.29},
+  'FENCE_S':{txt:'两侧安全围栏\n左右侧全长安全防护', x:0, y:2.8, z:-1.2},
+};
+
+function showPopLabel(info){
+  var cvs=_popCvs, ctx=cvs.getContext('2d');
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  var F='"PingFang SC","Microsoft YaHei",Arial,sans-serif';
+  // background
+  ctx.fillStyle='rgba(0,0,15,0.88)';
+  ctx.beginPath(); ctx.roundRect(6,6,cvs.width-12,cvs.height-12,14); ctx.fill();
+  // pink border
+  ctx.strokeStyle='#ff55aa'; ctx.lineWidth=4;
+  ctx.beginPath(); ctx.roundRect(6,6,cvs.width-12,cvs.height-12,14); ctx.stroke();
+  // text lines
+  var lines=info.txt.split('\n');
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  if(lines.length===1){
+    ctx.fillStyle='#ffffff'; ctx.font='bold 52px '+F;
+    ctx.fillText(lines[0], cvs.width/2, cvs.height/2);
+  } else {
+    ctx.fillStyle='#ffffff'; ctx.font='bold 52px '+F;
+    ctx.fillText(lines[0], cvs.width/2, cvs.height*0.36);
+    ctx.fillStyle='#aaddff'; ctx.font='32px '+F;
+    ctx.fillText(lines[1], cvs.width/2, cvs.height*0.72);
+  }
+  _popTex.needsUpdate=true;
+  _popSp.position.set(info.x, info.y, info.z);
+  _popSp.scale.set(3.8, 0.76, 1);
+  _popSp.visible=true;
+}
+
+(function buildOverlays(){
+  var pFill=new THREE.MeshLambertMaterial({color:0xff69b4,transparent:true,opacity:0.28,depthWrite:false,depthTest:true});
+  var pEdge=new THREE.LineBasicMaterial({color:0xff2288,linewidth:2});
+
+  function addOvl(key,cx,cy,cz,sw,sh,sd){
+    var geo=new THREE.BoxGeometry(sw,sh,sd);
+    var fm=new THREE.Mesh(geo,pFill.clone()); fm.position.set(cx,cy,cz); fm.visible=false; scene.add(fm);
+    var em=new THREE.LineSegments(new THREE.EdgesGeometry(geo),pEdge.clone()); em.position.set(cx,cy,cz); em.visible=false; scene.add(em);
+    EOVL[key]=[fm,em];
+  }
+
+  var rs=0.42; // robot overlay size
+  // Robots — on rail, arm span up from y=1.22
+  addOvl('R1', -1.5,1.62,1.45, rs,0.90,rs);
+  addOvl('R2',  2.5,1.62,1.45, rs,0.90,rs);
+  addOvl('R3', -5.5,1.62,-1.65, rs,0.90,rs);
+  addOvl('R4', -1.5,1.62,-1.65, rs,0.90,rs);
+  addOvl('R5',  2.5,1.62,-1.65, rs,0.90,rs);
+  addOvl('R6',  5.5,1.62,-1.65, rs,0.90,rs);
+  // Rails
+  addOvl('RAIL_F', 0,1.22,1.51, 13.8,0.20,0.18);
+  addOvl('RAIL_R', 0,1.22,-1.71, 13.8,0.20,0.18);
+  // Conveyors
+  addOvl('CV_RCV', 0,1.00,1.45, 13.7,0.38,0.60);
+
+  addOvl('CV_SRT', 0,1.00,-1.65,13.7,0.38,0.60);
+  // Work stations
+  addOvl('TABLE', 0,0.98,2.26, 4.2,0.22,0.70);
+  addOvl('STAGE', 0,0.55,0.0, 14.2,1.10,0.58);
+  // Scanners
+  addOvl('SCAN_A', 0,0.90,2.14,  0.36,1.50,0.36);
+  addOvl('SCAN_B',-3.0,0.90,-1.05, 0.36,1.50,0.36);
+  addOvl('SCAN_C', 4.0,0.90,-1.05, 0.36,1.50,0.36);
+  // Compactors
+  addOvl('COMP1',-5.5,1.12,2.7, 1.05,1.65,1.05);
+  addOvl('COMP2', 5.5,1.12,2.7, 1.05,1.65,1.05);
+  // Andon
+  addOvl('ANDON', 0,4.15,-5.48, 5.9,2.40,0.28);
+  // Z zones
+  var z14cx=ZX0+1.5*ZSP, z14w=4*ZSP+0.05;
+  var z514cx=ZX0+(4+4.5)*ZSP, z514w=10*ZSP+0.05;
+  var z1518cx=ZX0+15.5*ZSP, z1518w=4*ZSP+0.05;
+  var zcy=SHELFY+0.30, zhalf=0.65;
+  addOvl('Z1_4',   z14cx,  zcy, ZZ, z14w,  zhalf, 0.44);
+  addOvl('Z5_14',  z514cx, zcy, ZZ, z514w, zhalf, 0.44);
+  addOvl('Z15_18', z1518cx,zcy, ZZ, z1518w,zhalf, 0.44);
+})();
+// Register pickup corridor overlay
+EOVL['CORRIDOR']=[_pickZone, _pickEdge];
+// Register signal lamp overlay (covers all 18 Z-container signal lights, world y≈1.46–1.62)
+var _sigGeo=new THREE.BoxGeometry(14.2,0.22,0.14);
+var _sigFill=new THREE.Mesh(_sigGeo,new THREE.MeshLambertMaterial({color:0xff69b4,transparent:true,opacity:0.32,depthWrite:false}));
+_sigFill.position.set(0,1.54,ZZ); _sigFill.visible=false; scene.add(_sigFill);
+var _sigEdge=new THREE.LineSegments(new THREE.EdgesGeometry(_sigGeo),new THREE.LineBasicMaterial({color:0xff2288,transparent:true,opacity:0.80}));
+_sigEdge.position.set(0,1.54,ZZ); _sigEdge.visible=false; scene.add(_sigEdge);
+EOVL['SIGLAMP']=[_sigFill,_sigEdge];
+// Front U-shape safety fence overlays (two arms, bypassing the 4m robot opening)
+(function(){
+  var FY=0.925, FH=1.95, fm=new THREE.MeshLambertMaterial({color:0xff69b4,transparent:true,opacity:0.28,depthWrite:false});
+  var em=new THREE.LineBasicMaterial({color:0xff2288,transparent:true,opacity:0.80});
+  function mkOvl(cx,cy,cz,sw,sh,sd){
+    var g=new THREE.BoxGeometry(sw,sh,sd);
+    var f=new THREE.Mesh(g,fm.clone()); f.position.set(cx,cy,cz); f.visible=false; scene.add(f);
+    var e=new THREE.LineSegments(new THREE.EdgesGeometry(g),em.clone()); e.position.set(cx,cy,cz); e.visible=false; scene.add(e);
+    return [f,e];
+  }
+  // Front fence: left arm (outer + bypass + inner, x=-7.38→-2.0, z=1.70→2.88)
+  var fL=mkOvl(-4.69, FY, 2.29,  5.48, FH, 1.28);
+  // Front fence: right arm (x=+2.0→+7.38, z=1.70→2.88)
+  var fR=mkOvl( 4.69, FY, 2.29,  5.48, FH, 1.28);
+  EOVL['FENCE_F']=[fL[0],fL[1],fR[0],fR[1]];
+  // Side fences: left (x=-7.38, z=-5.28→2.88) and right (x=+7.38)
+  var sL=mkOvl(-7.38, FY, -1.20,  0.14, FH, 8.20);
+  var sR=mkOvl( 7.38, FY, -1.20,  0.14, FH, 8.20);
+  EOVL['FENCE_S']=[sL[0],sL[1],sR[0],sR[1]];
+})();
+
+function hlEquip(btn,key){
+  Object.keys(EOVL).forEach(function(k){EOVL[k].forEach(function(o){o.visible=false;});});
+  _popSp.visible=false;
+  if(_activeBtn) _activeBtn.classList.remove('active');
+  if(_activeBtn===btn){_activeBtn=null;return;}
+  _activeBtn=btn; btn.classList.add('active');
+  if(EOVL[key]) EOVL[key].forEach(function(o){o.visible=true;});
+  if(EINFO[key]) showPopLabel(EINFO[key]);
+}
+
+// ─────────────────────────────────────────────────────────────
+//  RENDER LOOP
+// ─────────────────────────────────────────────────────────────
+function animate(){
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene,camera);
+}
+animate();
+</script>
+</body>
+</html>
