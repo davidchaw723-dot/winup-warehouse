@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>复杂多SKU电商仓 · 订单履约 · 柔性分拣+自动包装模块① · WinUp</title>
+<title>视客华东仓 · 订单履约 · 柔性分拣+自动包装模块① · WinUp</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#030a14;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif;color:#c8ddf0}
@@ -30,7 +30,7 @@ canvas{display:block}
 </head>
 <body>
 <div id="topbar">
-  <span class="tit">复杂多SKU电商仓 · 订单履约全流程 · WinUp</span>
+  <span class="tit">视客华东仓 · 订单履约全流程 · WinUp</span>
   <span class="sub">Station 100-200 · Zone 1-18 · 9台Delta机器人 · 人工检验区 · 自动包装封箱</span>
   <span class="ver">WINUP · 2026.03</span>
 </div>
@@ -1030,7 +1030,7 @@ function _drawAndon(cvs){
   c.textAlign='left';c.textBaseline='middle';
   c.fillText('ANDON  ·  MES 订单履约实时看板',22,25);
   c.fillStyle='#4a8aaa';c.font='15px '+F;
-  c.fillText('复杂多SKU电商仓  ·  Zone 1–18  ·  9台Delta机器人  ·  全自动封箱贴标出库',22,52);
+  c.fillText('视客华东仓  ·  Zone 1–18  ·  9台Delta机器人  ·  全自动封箱贴标出库',22,52);
   // Clock
   var hn=m.now,hh=hn.getHours(),mm=hn.getMinutes(),ss=hn.getSeconds();
   var tStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss;
@@ -1291,7 +1291,7 @@ function mkOrderAndon_UNUSED_STATIC(){
   c.fillText('ANDON  ·  MES 订单履约实时看板',22,40);
   c.fillStyle='#7aadcc';c.font='22px '+F;
   c.textAlign='center';
-  c.fillText('复杂多SKU电商仓  ·  订单履约全流程  ·  中间缓冲区',W/2,40);
+  c.fillText('视客华东仓  ·  订单履约全流程  ·  中间缓冲区',W/2,40);
   c.fillStyle='#00eeff';c.font='bold 30px '+F;
   c.textAlign='right';
   c.fillText(timeStr,W-20,30);
