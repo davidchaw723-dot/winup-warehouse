@@ -1,0 +1,3278 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>复杂多SKU电商仓 · 订单履约 · 柔性分拣+自动包装模块① · WinUp</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#030a14;overflow:hidden;font-family:'PingFang SC','Microsoft YaHei',sans-serif;color:#c8ddf0}
+canvas{display:block}
+#topbar{position:fixed;top:0;left:0;right:0;height:50px;background:rgba(4,12,26,0.97);border-bottom:1px solid #0e2235;display:flex;align-items:center;padding:0 20px;z-index:20}
+.tit{font-size:14px;font-weight:700;color:#55aadd;letter-spacing:0.7px}
+.sub{font-size:10.5px;color:#2a4a60;margin-left:12px}
+.ver{margin-left:auto;font-size:10px;color:#1a3a50;border:1px solid #0e2235;padding:3px 10px;border-radius:3px}
+#infobox{position:fixed;right:16px;bottom:62px;background:rgba(4,12,24,0.94);border:1px solid #0e2235;border-radius:5px;padding:14px 16px;width:204px;z-index:20}
+#infobox h4{font-size:10px;color:#4a88aa;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;border-bottom:1px solid #1a3a50;padding-bottom:6px}
+.irow{display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px}
+.ilbl{color:#6a99bb}.ival{color:#aaddff;font-weight:600}
+#cambar{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:20}
+#cambar button{background:rgba(7,18,35,0.92);border:1px solid #142a40;color:#5588aa;font-size:11px;padding:7px 13px;border-radius:4px;cursor:pointer;transition:all 0.15s;font-family:inherit}
+#cambar button:hover{background:rgba(12,35,65,0.96);border-color:#1e5070;color:#88ccee}
+#cambar button.act{background:rgba(10,40,80,0.98);border-color:#2a7799;color:#fff;font-weight:600}
+#tip{position:fixed;bottom:62px;left:50%;transform:translateX(-50%);font-size:10px;color:#142233;letter-spacing:0.5px;z-index:20;pointer-events:none}
+#equipPanel{position:fixed;left:16px;top:66px;width:194px;background:rgba(4,12,24,0.95);border:1px solid #0e2235;border-radius:5px;padding:10px 10px 8px;max-height:calc(100vh - 90px);overflow-y:auto;z-index:20;scrollbar-width:thin;scrollbar-color:#0e2235 transparent}
+#equipPanel h4{font-size:10px;color:#4a88aa;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;border-bottom:1px solid #1a3a50;padding-bottom:5px}
+.eSep{display:block;font-size:9px;color:#3a6a88;padding:5px 2px 2px;letter-spacing:0.8px}
+.eBtn{display:block;width:100%;margin:2px 0;padding:5px 8px;background:rgba(10,22,40,0.7);border:1px solid #1a3a55;border-radius:3px;color:#88bbdd;font-size:10.5px;cursor:pointer;text-align:left;transition:all 0.12s;font-family:inherit}
+.eBtn:hover{background:rgba(20,50,85,0.9);color:#bbddff;border-color:#2a5a88}
+.eBtn.active{background:rgba(160,20,80,0.35);color:#ffaacc;border-color:#cc2266;font-weight:600}
+</style>
+</head>
+<body>
+<div id="topbar">
+  <span class="tit">复杂多SKU电商仓 · 订单履约全流程 · WinUp</span>
+  <span class="sub">Station 100-200 · Zone 1-18 · 9台Delta机器人 · 人工检验区 · 自动包装封箱</span>
+  <span class="ver">WINUP · 2026.03</span>
+</div>
+<div id="infobox">
+  <h4>全流程系统参数</h4>
+  <div class="irow"><span class="ilbl">作业区段</span><span class="ival">St.100→200</span></div>
+  <div class="irow"><span class="ilbl">Delta机器人</span><span class="ival">9台</span></div>
+  <div class="irow"><span class="ilbl">重力货架</span><span class="ival">Zone 1-18（18架）</span></div>
+  <div class="irow"><span class="ilbl">非隐形SKU</span><span class="ival">393个（Z1-10）</span></div>
+  <div class="irow"><span class="ilbl">隐形眼镜SKU</span><span class="ival">2,805个（Z11-18）</span></div>
+  <div class="irow"><span class="ilbl">人工修正工位</span><span class="ival">3台（离线）</span></div>
+  <div class="irow"><span class="ilbl">日均产能</span><span class="ival">~56,000单元/天</span></div>
+  <div class="irow"><span class="ilbl">成箱CT</span><span class="ival">~4-5秒/箱</span></div>
+  <div class="irow"><span class="ilbl">全线长度</span><span class="ival">~57M</span></div>
+  <div class="irow"><span class="ilbl">Andon看板</span><span class="ival">1套（缓冲区北墙）</span></div>
+</div>
+<div id="equipPanel">
+  <h4>设备高亮选择</h4>
+  <span class="eSep">── 自动成箱系统 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'ST100')">St.100 · 自动成箱机</button>
+  <button class="eBtn" onclick="hlEquip(this,'CARTON_MAG')">平板纸箱料仓（11种规格）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ST105')">St.105 · 成箱二维码生成器</button>
+  <button class="eBtn" onclick="hlEquip(this,'ST106')">St.106 · 订单信息扫码 → MES</button>
+  <button class="eBtn" onclick="hlEquip(this,'SCAN_PRE')">入库扫码 · 非隐形区入口前</button>
+  <span class="eSep">── 主传送系统 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'CONVEYOR')">主动力传送带</button>
+  <button class="eBtn" onclick="hlEquip(this,'CONV_RAIL')">传送带侧导轨</button>
+  <button class="eBtn" onclick="hlEquip(this,'SCANNERS')">条码扫描器（12处）</button>
+  <button class="eBtn" onclick="hlEquip(this,'CARTONS')">在线流转纸箱</button>
+  <span class="eSep">── Delta机器人区 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'GANTRY')">龙门架（5组）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ROBOT_R1')">R1 · Delta机器人（礼品）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ROBOT_R2')">R2 · Delta机器人（礼品续）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ROBOT_R3')">R3 · Delta机器人（护理液）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ROBOT_R4')">R4 · Delta机器人（护眼液）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ROBOT_R5')">R5 · Delta机器人（伴侣盒）</button>
+  <button class="eBtn" onclick="hlEquip(this,'EEF')">末端执行器+视觉系统</button>
+  <button class="eBtn" onclick="hlEquip(this,'SAFETY_FENCE')">安全围栏（全线两区）</button>
+  <span class="eSep">── 重力货架 Zone 1-10 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'RACK_GIFT')">Z1-Z4 · 礼品区货架</button>
+  <button class="eBtn" onclick="hlEquip(this,'RACK_EYE')">Z5-Z6 · 护眼液货架</button>
+  <button class="eBtn" onclick="hlEquip(this,'RACK_CARE')">Z7-Z8 · 护理液货架</button>
+  <button class="eBtn" onclick="hlEquip(this,'RACK_COMP')">Z9-Z10 · 伴侣盒货架</button>
+  <span class="eSep">── 流程站点 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'ANDON')">Andon看板（缓冲区北墙 · Canvas壁挂）</button>
+  <span class="eSep">── 隐形眼镜区 Zone 11-18 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'RACK_CL')">Z11-Z18 · 隐形眼镜货架</button>
+  <button class="eBtn" onclick="hlEquip(this,'GANTRY_CL')">龙门架 · 隐形区（4组 x=10→18）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ROBOT_R6')">R6 · Delta机器人（隐形）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ROBOT_R7')">R7 · Delta机器人（隐形）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ROBOT_R8')">R8 · Delta机器人（隐形）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ROBOT_R9')">R9 · Delta机器人（隐形）</button>
+  <span class="eSep">── 检验/修正/封装区 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'ST210')">St.210 · 装箱内容核验扫描器</button>
+  <button class="eBtn" onclick="hlEquip(this,'ST220')">St.220 · 重力分流传送带</button>
+  <button class="eBtn" onclick="hlEquip(this,'MANUAL_AREA')">St.220 人工修正工位（3台）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ST225')">St.225 · 回流重力传送带</button>
+  <button class="eBtn" onclick="hlEquip(this,'ST230')">St.230 · 封箱机</button>
+  <button class="eBtn" onclick="hlEquip(this,'ST240')">St.240 · 贴地址标签</button>
+  <button class="eBtn" onclick="hlEquip(this,'ST250')">St.250 · 发货标签核验</button>
+  <span class="eSep">── 电气控制 ──</span>
+  <button class="eBtn" onclick="hlEquip(this,'ELEC_CTRL')">封装区电柜组（主电源+PLC+安全门控）</button>
+  <button class="eBtn" onclick="hlEquip(this,'ELEC_BUFFER')">缓冲区南侧控制中心（HMI+主电柜）</button>
+</div>
+<div id="cambar">
+  <button class="act" id="b-iso" onclick="setCam('iso')">⬡ 等角全览</button>
+  <button id="b-top" onclick="setCam('top')">▲ 俯视全线</button>
+  <button id="b-side" onclick="setCam('side')">◫ 侧视图</button>
+  <button id="b-andon" onclick="setCam('andon')">▣ Andon看板</button>
+</div>
+<div id="tip">鼠标左键旋转 · 右键平移 · 滚轮缩放</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+if(typeof THREE==='undefined'){document.body.innerHTML='<div style="color:#f44;padding:60px">Three.js加载失败</div>';throw 0;}
+var W=window.innerWidth,H=window.innerHeight;
+var renderer=new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(W,H);renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+document.body.appendChild(renderer.domElement);
+var scene=new THREE.Scene();scene.background=new THREE.Color(0x030a14);
+scene.fog=new THREE.FogExp2(0x030a14,0.003);
+// ── GROUP HIERARCHY FIX: prevent re-parenting when gXxx.add(o)+scene.add(o) both called ──
+(function(){var _sa=scene.add.bind(scene);scene.add=function(o){if(o&&o.parent&&o.parent!==scene)return o;return _sa(o);};})();
+var camera=new THREE.PerspectiveCamera(45,W/H,0.1,300);
+var controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=0.07;
+controls.maxPolarAngle=Math.PI*0.88;controls.minDistance=2;controls.maxDistance=300;
+window.addEventListener('resize',function(){W=window.innerWidth;H=window.innerHeight;renderer.setSize(W,H);camera.aspect=W/H;camera.updateProjectionMatrix();});
+scene.add(new THREE.AmbientLight(0x6688aa,2.2));
+var dL=new THREE.DirectionalLight(0xaaccee,1.4);dL.position.set(6,16,8);scene.add(dL);
+var dL2=new THREE.DirectionalLight(0x6688aa,0.9);dL2.position.set(-10,12,-6);scene.add(dL2);
+var dL3=new THREE.DirectionalLight(0x445566,0.6);dL3.position.set(0,8,12);scene.add(dL3);
+
+function box(w,h,d){return new THREE.BoxGeometry(w,h,d)}
+function cyl(rt,rb,h,s){return new THREE.CylinderGeometry(rt,rb,h,s||12)}
+function sph(r,s){return new THREE.SphereGeometry(r,s||10,s||8)}
+function mesh(g,m){return new THREE.Mesh(g,m)}
+function LM(c,ei){var m=new THREE.MeshLambertMaterial({color:c});if(ei!==undefined){m.emissive=new THREE.Color(ei);m.emissiveIntensity=0.4;}return m;}
+function TLM(c,op){return new THREE.MeshLambertMaterial({color:c,transparent:true,opacity:op})}
+function BM(c){return new THREE.MeshBasicMaterial({color:c})}
+function mkLbl(txt,sz,col){
+  return new THREE.Object3D();
+}
+function addLine(x1,y1,z1,x2,y2,z2,col){
+  var pts=[new THREE.Vector3(x1,y1,z1),new THREE.Vector3(x2,y2,z2)];
+  var g=new THREE.BufferGeometry().setFromPoints(pts);
+  var ln=new THREE.Line(g,new THREE.LineBasicMaterial({color:col||0x1a4060}));
+  scene.add(ln);return ln;
+}
+
+// ── HIGHLIGHT SYSTEM (EOVL) ──
+var EOVL={};
+var _activeBtn=null;
+
+// ── Popup label (shown when equipment is highlighted) — 与入库收货区完全一致 ──
+var _popCvs=document.createElement('canvas'); _popCvs.width=900; _popCvs.height=180;
+var _popTex=new THREE.CanvasTexture(_popCvs);
+var _popSp=new THREE.Sprite(new THREE.SpriteMaterial({map:_popTex,transparent:true,depthTest:false}));
+_popSp.visible=false; scene.add(_popSp);
+
+// ── SCENE GROUPS ──
+function G(key){var g=new THREE.Group();scene.add(g);return g;}
+var gSt100=G('ST100'),gMag=G('CARTON_MAG'),gSt105=G('ST105'),gSt106=G('ST106'),gScanPre=G('SCAN_PRE');
+var gPrint=G('PRINT_HEAD'),gApply=G('APPLY_ARM');
+var gConv=G('CONVEYOR'),gConvRail=G('CONV_RAIL');
+var gScanners=G('SCANNERS'),gCartons=G('CARTONS');
+var gGantry=G('GANTRY');
+var gR1=G('ROBOT_R1'),gR2=G('ROBOT_R2'),gR3=G('ROBOT_R3'),gR4=G('ROBOT_R4'),gR5=G('ROBOT_R5');
+var gEEF=G('EEF'),gFence=G('SAFETY_FENCE');
+var gRackGift=G('RACK_GIFT'),gRackEye=G('RACK_EYE'),gRackCare=G('RACK_CARE'),gRackComp=G('RACK_COMP');
+var gSt120=G('ST120_ZONE'),gSt130=G('ST130_ZONE'),gAndon=G('ANDON');
+
+// ── FLOOR (57m × 11m, x=-19 to x=38) ──
+var flr=mesh(box(57,0.06,11),LM(0x060c18));flr.position.set(9.5,-0.03,0);scene.add(flr);
+var gridMain=new THREE.GridHelper(57,57,0x0a1e32,0x060e1a);gridMain.position.set(9.5,0,0);scene.add(gridMain);
+// Walls
+var wm=TLM(0x07172a,0.15);
+[{p:[9.5,3,5.5],s:[57,6,0.08]},{p:[9.5,3,-5.5],s:[57,6,0.08]},
+ {p:[-19,3,0],s:[0.08,6,11]},{p:[38,3,0],s:[0.08,6,11]}].forEach(function(d){
+  var w=mesh(box(d.s[0],d.s[1],d.s[2]),wm);w.position.set(d.p[0],d.p[1],d.p[2]);scene.add(w);
+});
+// Ceiling beams（x=7跳过：该位置对应Andon板正上方，避免穿插）
+for(var bx=-18;bx<=36;bx+=5){
+  if(bx===7)continue;
+  var cb=mesh(box(0.15,0.14,11),LM(0x0a1826));cb.position.set(bx,4.6,0);scene.add(cb);
+}
+// LED ceiling fixtures removed (visual only; scene brightness maintained by AmbientLight + DirectionalLights)
+// Floor safety lines
+[-0.36,0.36].forEach(function(z){
+  var fl=mesh(box(57,0.008,0.09),BM(0x886600));fl.position.set(9.5,0.007,z);scene.add(fl);
+});
+
+// ── MAIN CONVEYOR ──
+function makeConveyor(len,cx,y,z){
+  var g=new THREE.Group();
+  // Frame (1.0m wide)
+  var fr=mesh(box(len,0.16,1.00),LM(0x14243a));fr.position.y=0.08;g.add(fr);
+  // Belt
+  var blt=mesh(box(len-0.08,0.024,0.84),LM(0x0a1620));blt.position.y=0.172;g.add(blt);
+  // Belt marks
+  for(var bx=-len/2+0.4;bx<len/2;bx+=0.6){
+    var bm=mesh(box(0.022,0.007,0.82),BM(0x111e2c));bm.position.set(bx,0.186,0);g.add(bm);
+  }
+  // End rollers
+  [-len/2+0.06,len/2-0.06].forEach(function(rx){
+    var r=mesh(cyl(0.068,0.068,0.94,8),LM(0x223348));r.rotation.z=Math.PI/2;r.position.set(rx,0.15,0);g.add(r);
+  });
+  // Side rails removed（用户要求删除两侧蓝色导轨）
+  // Legs
+  for(var lx=-len/2+1.5;lx<len/2;lx+=2.8){
+    [-0.38,0.38].forEach(function(lz){
+      var lg=mesh(box(0.06,0.84,0.06),LM(0x14202e));lg.position.set(lx,-0.34,lz);g.add(lg);
+    });
+    var xb=mesh(box(0.04,0.04,0.78),LM(0x0e1a2a));xb.position.set(lx,-0.15,0);g.add(xb);
+  }
+  g.position.set(cx,y,z);
+  gConv.add(g);scene.add(g);
+  return g;
+}
+// ── Gravity roller conveyor: St.100 exit → picking zone entry (x=-17.5→-13) ──
+function makeGravityConveyor(len,cx,y,z){
+  var g=new THREE.Group();
+  var railM=LM(0x8898a8);
+  [-0.27,0.27].forEach(function(sz){
+    var rail=mesh(box(len,0.05,0.05),railM);rail.position.set(0,0.155,sz);g.add(rail);
+  });
+  // Rollers (cylinders perpendicular to travel, spaced 0.13)
+  var nR=Math.floor(len/0.13),rolM=LM(0xb0bcc8);
+  for(var ri=0;ri<=nR;ri++){
+    var rol=mesh(cyl(0.022,0.022,0.52,8),rolM);
+    rol.rotation.x=Math.PI/2;rol.position.set(-len/2+ri*0.13,0.18,0);g.add(rol);
+  }
+  // Legs + cross braces every 1.2 units
+  var legM=LM(0x8090a0);
+  for(var lx=-len/2+0.5;lx<len/2;lx+=1.2){
+    [-0.27,0.27].forEach(function(sz){
+      var leg=mesh(cyl(0.018,0.018,0.85,6),legM);leg.position.set(lx,-0.245,sz);g.add(leg);
+      var foot=mesh(box(0.07,0.016,0.07),LM(0x607080));foot.position.set(lx,-0.675,sz);g.add(foot);
+    });
+    var br=mesh(box(0.02,0.02,0.52),legM);br.position.set(lx,-0.36,0);g.add(br);
+  }
+  g.position.set(cx,y,z);scene.add(g);return g;
+}
+makeGravityConveyor(10.5,-13.75,0,0); // x=-19 → x=-8.5 (重力段，成箱区到拣选区入口)
+
+// ── 八字型过渡挡板（重力滚轮↔动力带两端对接处）──
+// 重力轨道半宽0.27m，动力带导轨半宽0.49m，过渡长0.5m
+function makeVGuide(xJunc,toWide){
+  var zN=0.27,zW=0.49,tL=0.5,pH=0.10,pT=0.028;
+  var dz=zW-zN; // 0.22
+  var pLen=Math.sqrt(tL*tL+dz*dz); // ~0.547m
+  var ang=Math.atan2(dz,tL);       // ~23.7°
+  var gm=new THREE.MeshLambertMaterial({color:0xcc7700,emissive:new THREE.Color(0x441a00),emissiveIntensity:0.5});
+  // toWide: 从窄→宽(重力→动力), plates在belt一侧(xJunc)向东展开
+  // !toWide: 从宽→窄(动力→重力), plates向东收拢
+  var sign=toWide?1:-1;
+  var cx=xJunc+tL/2;
+  var czN=(zN+zW)/2, czS=-(zN+zW)/2;
+  // 北侧板(+Z)
+  var pn=mesh(box(pLen,pH,pT),gm);
+  pn.position.set(cx,0.21,czN);pn.rotation.y=-sign*ang;scene.add(pn);
+  // 南侧板(-Z)
+  var ps=mesh(box(pLen,pH,pT),gm);
+  ps.position.set(cx,0.21,czS);ps.rotation.y=sign*ang;scene.add(ps);
+  // 顶部压边条（增加立体感）
+  var tn=mesh(box(pLen,0.016,pT+0.008),LM(0xffaa00));
+  tn.position.set(cx,0.21+pH/2+0.008,czN);tn.rotation.y=-sign*ang;scene.add(tn);
+  var ts=mesh(box(pLen,0.016,pT+0.008),LM(0xffaa00));
+  ts.position.set(cx,0.21+pH/2+0.008,czS);ts.rotation.y=sign*ang;scene.add(ts);
+}
+makeVGuide(-8.5,true);   // 重力→动力带（展开，窄端在x=-8.5对接重力轨道末端）
+makeVGuide(22.5,false);  // 动力带→重力（收拢，窄端在x=23对接重力轨道，即St.210扫描器位置）
+
+
+// Powered belt: 拣选区+缓冲区+隐形区+核验扫描器前 (x=-8.5 → x=23)
+makeConveyor(31.5,7.25,0,0); // x=-8.5 → x=23（延伸至St.210装箱核验扫描器位置）
+
+// Direction arrows — on powered section only
+for(var ax=-8;ax<22;ax+=3.5){
+  var arr=mesh(box(0.18,0.008,0.06),BM(0x1a3a5a));arr.position.set(ax,0.190,0);scene.add(arr);
+  // arrowhead
+  var ah=mesh(new THREE.ConeGeometry(0.04,0.12,4),BM(0x2a5a7a));
+  ah.rotation.z=-Math.PI/2;ah.position.set(ax+0.16,0.192,0);scene.add(ah);
+}
+
+// ── STATION 100 - AUTO CARTON ERECTOR (yellow open frame, matching original design) ──
+var s100x=-18.0;
+var s100W=1.55,s100H=1.39,s100D=0.90; // 宽度覆盖5种纸箱总跨度1.44m
+var yFM=LM(0xa0aab8,0x283040); // silver/grey industrial frame
+// 4 corner vertical posts
+[[s100x-s100W/2,-s100D/2],[s100x+s100W/2,-s100D/2],[s100x-s100W/2,s100D/2],[s100x+s100W/2,s100D/2]].forEach(function(xz){
+  var p=mesh(cyl(0.038,0.038,s100H,8),yFM);p.position.set(xz[0],s100H/2,xz[1]);gSt100.add(p);scene.add(p);
+});
+// Horizontal beams at 3 levels (bottom / mid / top)
+[0.18,0.85,s100H].forEach(function(hy){
+  [[s100x,-s100D/2],[s100x,s100D/2]].forEach(function(xz){
+    var hb=mesh(box(s100W,0.045,0.045),yFM);hb.position.set(xz[0],hy,xz[1]);gSt100.add(hb);scene.add(hb);
+  });
+  [-s100W/2,s100W/2].forEach(function(dx){
+    var hb2=mesh(box(0.045,0.045,s100D),yFM);hb2.position.set(s100x+dx,hy,0);gSt100.add(hb2);scene.add(hb2);
+  });
+});
+// Cross diagonal brace
+var brace=mesh(box(0.03,0.03,s100D*1.15),yFM);brace.position.set(s100x-s100W/2+0.04,0.52,0);brace.rotation.x=0.55;gSt100.add(brace);scene.add(brace);
+// Cardboard magazine: flat blanks stacked horizontally (lying flat, stacked in Y)
+// Machine pushes each blank sideways (Z direction) into the forming station
+var magZ=s100D/2-0.12; // magazine on the back side
+for(var mi=0;mi<22;mi++){
+  var mc=mesh(box(s100W*0.72,0.013,s100D*0.30),LM(0xc8a850+(mi%2)*0x040200));
+  mc.position.set(s100x,0.22+mi*0.016,magZ);
+  gMag.add(mc);scene.add(mc);
+}
+// Magazine holder sides (two thin vertical plates holding the stack)
+[-s100W/2+0.08,s100W/2-0.08].forEach(function(dx){
+  var mh=mesh(box(0.025,0.55,s100D*0.32),LM(0x909aa8));
+  mh.position.set(s100x+dx,0.44,magZ);gSt100.add(mh);scene.add(mh);
+});
+// Pusher arm (slides blanks sideways into forming zone)
+var pusher=mesh(box(s100W*0.68,0.04,0.06),LM(0x7a8898));
+pusher.position.set(s100x,0.30,magZ-0.20);gSt100.add(pusher);scene.add(pusher);
+var pusherCyl=mesh(cyl(0.022,0.022,0.32,6),LM(0x8898a8));
+pusherCyl.rotation.x=Math.PI/2;pusherCyl.position.set(s100x,0.30,magZ-0.06);gSt100.add(pusherCyl);scene.add(pusherCyl);
+// Internal mechanism: dark grey cylinder + platform
+var mGrey=LM(0x3a3a3a);
+var mPlatform=mesh(box(s100W-0.18,0.06,s100D-0.16),mGrey);mPlatform.position.set(s100x,0.62,0);gSt100.add(mPlatform);scene.add(mPlatform);
+var mCyl=mesh(cyl(0.055,0.055,0.45,8),LM(0x8898a8));mCyl.position.set(s100x-0.22,0.38,0.1);gSt100.add(mCyl);scene.add(mCyl);
+var mCyl2=mesh(cyl(0.04,0.04,0.35,8),LM(0x8898a8));mCyl2.rotation.z=Math.PI/2;mCyl2.position.set(s100x,0.45,-0.25);gSt100.add(mCyl2);scene.add(mCyl2);
+// Status LED
+var s100LED=mesh(sph(0.055,8),new THREE.MeshLambertMaterial({color:0x00ff44,emissive:new THREE.Color(0x00aa22),emissiveIntensity:1.5}));
+s100LED.position.set(s100x+s100W/2-0.05,s100H+0.08,s100D/2-0.08);gSt100.add(s100LED);scene.add(s100LED);
+var l100=mkLbl('St.100 · 自动成箱机',13,'#44aaff');
+l100.scale.set(2.2,0.5,1);l100.position.set(s100x,s100H+0.38,-0.6);scene.add(l100);
+// Front-face magazine Machine 1 (z- side, smaller sizes 1-2)
+var magZf1=-s100D/2+0.12;
+for(var mf=0;mf<18;mf++){
+  var mcf=mesh(box(s100W*0.68,0.75,0.014),LM(0xd4c068+(mf%2)*0x030200));
+  mcf.position.set(s100x,0.30+mf*0.014,magZf1);gMag.add(mcf);scene.add(mcf);
+}
+[-s100W/2+0.08,s100W/2-0.08].forEach(function(dx){
+  var mhf=mesh(box(0.025,0.42,s100D*0.28),LM(0x909aa8));
+  mhf.position.set(s100x+dx,0.38,magZf1);gSt100.add(mhf);scene.add(mhf);
+});
+
+
+// ── 成箱机两侧平纸箱料堆（MES通知选型，5种尺寸各一堆）──
+(function(){
+  // 5种纸箱尺寸（宽×深，单位m），从小到大；总跨度1.44m正好被机器s100W=1.55m覆盖
+  var szs=[
+    {w:0.16,d:0.20,h:0.072,n:14,col:0xd4a845},
+    {w:0.20,d:0.25,h:0.080,n:12,col:0xc89535},
+    {w:0.24,d:0.30,h:0.088,n:11,col:0xba8525},
+    {w:0.28,d:0.35,h:0.094,n:10,col:0xd2a040},
+    {w:0.32,d:0.40,h:0.100,n: 9,col:0xc09030}
+  ];
+  // 绝对坐标定位：从左到右累积排列，间隔0.06m
+  var gap=0.06;
+  var totalW=szs.reduce(function(s,sz){return s+sz.w;},0)+gap*(szs.length-1); // 1.44m
+  var xPositions=[];
+  var curX=s100x-totalW/2;
+  szs.forEach(function(sz){xPositions.push(curX+sz.w/2);curX+=sz.w+gap;});
+  var trayM=new THREE.MeshLambertMaterial({color:0x4a6070});
+  var tagM=new THREE.MeshLambertMaterial({color:0x2255bb,emissive:new THREE.Color(0x001133),emissiveIntensity:0.5});
+  [-1,1].forEach(function(side){
+    szs.forEach(function(sz,i){
+      var bx=xPositions[i];
+      var bzOuter=side*(s100D/2+0.03+sz.d); // 外边缘z
+      var bzCtr=side*(s100D/2+0.03+sz.d/2);  // 中心z
+      // 托盘底座
+      var tray=mesh(box(sz.w+0.06,0.016,sz.d+0.06),trayM);
+      tray.position.set(bx,0.008,bzCtr);gSt100.add(tray);scene.add(tray);
+      // 纸箱堆主体（大块代表下层大量纸箱）
+      var bulk=mesh(box(sz.w,sz.h*0.75,sz.d),LM(sz.col));
+      bulk.position.set(bx,0.016+sz.h*0.375,bzCtr);gSt100.add(bulk);scene.add(bulk);
+      // 顶层3张可见纸箱（有轻微错位，显得自然）
+      var offsets=[0.003,-0.004,0.002];
+      for(var ti=0;ti<3;ti++){
+        var sheet=mesh(box(sz.w-0.004,0.007,sz.d-0.004),LM(sz.col+(ti%2)*0x060400));
+        sheet.position.set(bx+offsets[ti],0.016+sz.h*0.75+0.007*(ti+0.5),bzCtr+offsets[(ti+1)%3]*0.5);
+        gSt100.add(sheet);scene.add(sheet);
+      }
+      // MES尺寸标签（贴在托盘侧面）
+      var tag=mesh(box(0.08,0.05,0.004),tagM);
+      tag.position.set(bx,0.03,bzOuter+side*0.002);gSt100.add(tag);scene.add(tag);
+      // 白色标签文字条
+      var lbl=mesh(box(0.065,0.018,0.005),LM(0xeeeeff));
+      lbl.position.set(bx,0.035,bzOuter+side*0.003);gSt100.add(lbl);scene.add(lbl);
+    });
+  });
+})();
+
+// ── STATION 105 - 成箱二维码生成器（成箱后立即打印，重力段 x=-15）──
+var gSt105=G('ST105');
+var s105x=-16.0;
+// 主机箱（北侧安装，打印头朝南面向纸箱）
+var s105base=mesh(box(0.06,0.30,0.06),LM(0x6a7a88));s105base.position.set(s105x,0.15,-0.42);gSt105.add(s105base);scene.add(s105base);
+var s105arm=mesh(box(0.06,0.06,0.22),LM(0x7a8898));s105arm.position.set(s105x,0.38,-0.31);gSt105.add(s105arm);scene.add(s105arm);
+var s105body=mesh(box(0.28,0.18,0.22),LM(0xdde4ec));s105body.position.set(s105x,0.42,-0.58);gSt105.add(s105body);scene.add(s105body);
+// 打印头（朝南面向纸箱）
+var s105head=mesh(box(0.20,0.10,0.05),LM(0xa0aaB8));s105head.position.set(s105x,0.42,-0.44);gSt105.add(s105head);scene.add(s105head);
+// 红色激光对准线（细条，仅打印时显示，初始隐藏）
+var s105laser=mesh(box(0.002,0.002,0.18),LM(0xff2200));s105laser.position.set(s105x,0.42,-0.35);s105laser.visible=false;gSt105.add(s105laser);scene.add(s105laser);
+// 线缆
+var s105tube=mesh(cyl(0.012,0.012,0.32,6),LM(0x1a2838));s105tube.rotation.x=-0.5;s105tube.position.set(s105x,0.60,-0.62);gSt105.add(s105tube);scene.add(s105tube);
+// 状态LED（绿色运行中）
+var s105LED=mesh(sph(0.038,8),new THREE.MeshLambertMaterial({color:0x00ff44,emissive:new THREE.Color(0x00aa22),emissiveIntensity:1.6}));
+s105LED.position.set(s105x+0.12,0.52,-0.58);gSt105.add(s105LED);scene.add(s105LED);
+// 小显示屏
+var s105scr=mesh(box(0.10,0.06,0.012),new THREE.MeshLambertMaterial({color:0x001a2e,emissive:new THREE.Color(0x002244),emissiveIntensity:0.8}));
+s105scr.position.set(s105x-0.06,0.46,-0.70);gSt105.add(s105scr);scene.add(s105scr);
+
+var l105=mkLbl('St.105 · 成箱二维码生成',12,'#44aaff');
+l105.scale.set(2.0,0.44,1);l105.position.set(s105x,1.05,-0.6);scene.add(l105);
+
+// ── STATION 106 - 订单信息扫码（重力带→动力带过渡口，读QR→MES→Delta机器人拣货）──
+(function(){
+  var sx=8.0; // 缓冲区→隐形区入口，替代原台式扫描器
+  // 立柱（北侧，z=-0.65，与货架柱扫描器同侧）
+  var post=mesh(box(0.048,0.38,0.048),LM(0x8090a0));post.position.set(sx,0.19,-0.65);gSt106.add(post);scene.add(post);
+  // 横臂（朝南伸向输送带）
+  var arm=mesh(box(0.042,0.042,0.30),LM(0x7a8898));arm.position.set(sx,0.35,-0.50);gSt106.add(arm);scene.add(arm);
+  // 扫描仪主体（工业固定式QR读码器）
+  var body=mesh(box(0.15,0.11,0.13),LM(0xd4dae2));body.position.set(sx,0.35,-0.34);gSt106.add(body);scene.add(body);
+  // 前面板深色读码窗口
+  var win=mesh(box(0.10,0.07,0.009),LM(0x080e1a));win.position.set(sx,0.35,-0.273);gSt106.add(win);scene.add(win);
+  // 读码窗口玻璃反光（薄蓝层）
+  var glass=mesh(box(0.10,0.07,0.003),new THREE.MeshLambertMaterial({color:0x204060,transparent:true,opacity:0.55}));
+  glass.position.set(sx,0.35,-0.268);gSt106.add(glass);scene.add(glass);
+  // 红色激光扫描扇面（锥尖朝+z扫向输送带，底面朝-z贴近读码窗）
+  var cg=new THREE.ConeGeometry(0.28,0.42,3,1);
+  var cm=new THREE.MeshLambertMaterial({color:0xff1800,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false});
+  var fan=new THREE.Mesh(cg,cm);
+  fan.rotation.x=Math.PI/2; // 锥尖→+z（朝输送带），底面→-z（贴近读码窗）
+  fan.position.set(sx,0.29,-0.08);
+  gSt106.add(fan);scene.add(fan);
+  // 激光落点（输送带上红线，模拟扫描光迹）
+  var spot=mesh(box(0.004,0.003,0.36),new THREE.MeshLambertMaterial({color:0xff0000,emissive:new THREE.Color(0xff0000),emissiveIntensity:2.5}));
+  spot.position.set(sx,0.17,-0.04);spot.visible=false;gSt106.add(spot);scene.add(spot);
+  // 状态LED（绿色）
+  var led=mesh(sph(0.026,8),new THREE.MeshLambertMaterial({color:0x00ff55,emissive:new THREE.Color(0x00cc44),emissiveIntensity:2.2}));
+  led.position.set(sx+0.065,0.41,-0.35);gSt106.add(led);scene.add(led);
+  // 线缆
+  var cab=mesh(cyl(0.010,0.010,0.28,6),LM(0x1a2838));cab.rotation.x=-0.45;cab.position.set(sx,0.46,-0.55);gSt106.add(cab);scene.add(cab);
+  // 标签
+  var lbl=mkLbl('St.106 · 订单信息扫码 → MES → Delta拣货',12,'#ffcc44');
+  lbl.scale.set(2.8,0.44,1);lbl.position.set(sx,0.80,-0.70);scene.add(lbl);
+})();
+
+
+// ── 入库扫码器（黄色安全围栏内，非隐形区入口x=-13进入2单位，与St.106距隐形区x=10距离一致）──
+(function(){
+  var sx=-11.0; // 黄色围栏内：非隐形区入口(x=-13)+2单位，与St.106(x=8)距隐形区(x=10)的2单位一致
+  // 立柱（北侧，z=-0.65，与St.106同侧）
+  var post=mesh(box(0.048,0.38,0.048),LM(0x8090a0));post.position.set(sx,0.19,-0.65);gScanPre.add(post);scene.add(post);
+  // 横臂（朝南伸向输送带）
+  var arm=mesh(box(0.042,0.042,0.30),LM(0x7a8898));arm.position.set(sx,0.35,-0.50);gScanPre.add(arm);scene.add(arm);
+  // 扫描仪主体（工业固定式QR读码器）
+  var body=mesh(box(0.15,0.11,0.13),LM(0xd4dae2));body.position.set(sx,0.35,-0.34);gScanPre.add(body);scene.add(body);
+  // 前面板深色读码窗口
+  var win=mesh(box(0.10,0.07,0.009),LM(0x080e1a));win.position.set(sx,0.35,-0.273);gScanPre.add(win);scene.add(win);
+  // 读码窗口玻璃反光（薄蓝层）
+  var glass=mesh(box(0.10,0.07,0.003),new THREE.MeshLambertMaterial({color:0x204060,transparent:true,opacity:0.55}));
+  glass.position.set(sx,0.35,-0.268);gScanPre.add(glass);scene.add(glass);
+  // 红色激光扫描扇面（锥尖朝+z扫向输送带，底面朝-z贴近读码窗）
+  var cg=new THREE.ConeGeometry(0.28,0.42,3,1);
+  var cm=new THREE.MeshLambertMaterial({color:0xff1800,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false});
+  var fan=new THREE.Mesh(cg,cm);
+  fan.rotation.x=Math.PI/2; // 锥尖→+z（朝输送带），底面→-z（贴近读码窗）
+  fan.position.set(sx,0.29,-0.08);
+  gScanPre.add(fan);scene.add(fan);
+  // 激光落点（输送带上红线，模拟扫描光迹）
+  var spot=mesh(box(0.004,0.003,0.36),new THREE.MeshLambertMaterial({color:0xff0000,emissive:new THREE.Color(0xff0000),emissiveIntensity:2.5}));
+  spot.position.set(sx,0.17,-0.04);spot.visible=false;gScanPre.add(spot);scene.add(spot);
+  // 状态LED（绿色）
+  var led=mesh(sph(0.026,8),new THREE.MeshLambertMaterial({color:0x00ff55,emissive:new THREE.Color(0x00cc44),emissiveIntensity:2.2}));
+  led.position.set(sx+0.065,0.41,-0.35);gScanPre.add(led);scene.add(led);
+  // 线缆
+  var cab=mesh(cyl(0.010,0.010,0.28,6),LM(0x1a2838));cab.rotation.x=-0.45;cab.position.set(sx,0.46,-0.55);gScanPre.add(cab);scene.add(cab);
+  // 标签
+  var lbl=mkLbl('入库扫码 · 非隐形区入口前',12,'#ffcc44');
+  lbl.scale.set(2.8,0.44,1);lbl.position.set(sx,0.80,-0.70);scene.add(lbl);
+})();
+
+// ── GRAVITY RACKS (Zone 1-10) ──
+// North side (z=+3.5): pick face toward conveyor (south), flip=false
+// South side (z=-3.5): pick face toward conveyor (north), flip=true
+// SKU definitions [color, fill]: all lanes filled to max (25 units, shelf depth 2.2m / 0.084m/unit)
+// ── 货架消耗 & 灯控补货系统 ──
+var _LANES=[],_ROBOT_LANE_POOLS={},_restockQueue=[],_RESTOCK_WORKERS=[],_MAX_RESTOCK_WORKERS=3;
+var _imHide=new THREE.Matrix4();_imHide.makeScale(0.001,0.001,0.001); // shared hide-matrix
+var _imRst=new THREE.Matrix4(); // reused for restock restore
+
+var _skus=[[0xe74c3c,25],[0x3498db,25],[0x2ecc71,25],[0xf39c12,25],
+           [0x9b59b6,25],[0x1abc9c,25],[0xe67e22,25],[0xffd93d,25],
+           [0xff6b6b,25],[0x4ecdc4,25],[0x45b7d1,25],[0x96ceb4,25],
+           [0xc0392b,25],[0x2980b9,25],[0x27ae60,25],[0xd35400,25],
+           [0x8e44ad,25],[0x16a085,25],[0xf1c40f,25],[0xe91e63,25]];
+// non-CL track→SKU index map (10 racks × 8 tracks; SKU 0-3 are high-freq, repeat often)
+var _nclMap=[0,0,1,1,2,3,3,4, 0,1,1,2,2,3,5,6, 0,1,2,2,3,3,7,8, 1,1,2,3,4,5,9,10,
+             0,2,2,3,3,6,11,12,1,2,3,3,4,5,13,7, 0,1,3,4,5,8,14,15,2,3,4,5,6,9,16,17,
+             1,2,3,5,7,10,11,18,0,1,4,6,8,12,13,19];
+// CL track→SKU index map (8 racks × 8 tracks)
+var _clMap=[0,0,1,1,2,3,4,5, 0,1,2,2,3,6,7,8, 1,2,3,3,4,9,10,11,0,2,3,4,5,6,12,13,
+            1,3,4,5,7,8,14,15,2,3,5,6,8,9,16,17,1,4,5,7,9,10,11,18,3,5,6,8,10,12,13,19];
+var _im=new THREE.InstancedMesh(new THREE.BoxGeometry(0.2285,0.060,0.080),new THREE.MeshLambertMaterial(),36000);
+scene.add(_im);
+var _iidx=0,_iM=new THREE.Matrix4(),_iC=new THREE.Color();
+
+// ── LANE SCAN MARKERS (all gravity racks non-CL + CL, pick face) ──
+// 40mm×30mm×3mm 小型扫码贴纸，机器人视觉探头拣选前扫码确认货道匹配
+// MeshBasicMaterial 不受灯光影响，始终清晰可见
+var _LMT=0.003; // 贴纸厚度 3mm
+var _lmBg=new THREE.InstancedMesh(
+  new THREE.BoxGeometry(0.040,0.030,_LMT),
+  new THREE.MeshBasicMaterial({color:0xd4dce8}),2200); // 淡蓝灰底板
+scene.add(_lmBg);
+var _lmPt=new THREE.InstancedMesh(
+  new THREE.BoxGeometry(0.026,0.019,_LMT*0.5),
+  new THREE.MeshBasicMaterial({color:0x1e2830}),2200); // 深色图案域（QR码区）
+scene.add(_lmPt);
+var _lmN=0,_lmM=new THREE.Matrix4();
+
+var rackDefs=[
+  {x:-7.5,z:2.0, col:0x2a5080,label:'Z1 · 礼品 Gifts',gp:gRackGift,flip:false},
+  {x:-5.5,z:2.0, col:0x2a5080,label:'Z2 · 礼品 Gifts',gp:gRackGift,flip:false},
+  {x:-3.5,z:2.0, col:0x2a5080,label:'Z3 · 护眼液',   gp:gRackEye, flip:false},
+  {x:-1.5,z:2.0, col:0x2a5080,label:'Z4 · 护理液',   gp:gRackCare,flip:false},
+  {x:0.5, z:2.0, col:0x2a5080,label:'Z5 · 伴侣盒',   gp:gRackComp,flip:false},
+  {x:-7.5,z:-2.0,col:0x2a5080,label:'Z6 · 礼品 Gifts',gp:gRackGift,flip:true},
+  {x:-5.5,z:-2.0,col:0x2a5080,label:'Z7 · 礼品 Gifts',gp:gRackGift,flip:true},
+  {x:-3.5,z:-2.0,col:0x2a5080,label:'Z8 · 护眼液',   gp:gRackEye, flip:true},
+  {x:-1.5,z:-2.0,col:0x2a5080,label:'Z9 · 护理液',   gp:gRackCare,flip:true},
+  {x:0.5, z:-2.0,col:0x2a5080,label:'Z10 · 伴侣盒',  gp:gRackComp,flip:true}
+];
+
+rackDefs.forEach(function(rd,_nri){
+  var RW=2.0,RH=2.2,RD=2.2;
+  var N_LAYERS=10,LAYER_H=0.20;
+  // flip=true means rack is on south side: pick face is +z (toward conveyor)
+  var SLOPE=rd.flip?0.055:-0.055;
+  var N_TRK=8,TRACK_W=(RW-0.06)/N_TRK;
+  var BOX_D=0.080,BOX_H=0.060;
+  var gp=rd.gp;
+  var hx=rd.x,hz=rd.z;
+  // fz = pick face (toward conveyor at z=0), bz = load face (away from conveyor)
+  var fz=rd.flip?hz+RD/2:hz-RD/2;
+  var bz=rd.flip?hz-RD/2:hz+RD/2;
+
+  var postM=LM(0x1a3050,0x050e18);
+  var beamM=LM(0x2a4a6a,0x0a1a28);
+  var shelfM=LM(0x152438);
+  var divM=LM(0x1e3850);
+
+  // 4 vertical posts
+  [[hx-RW/2,fz],[hx+RW/2,fz],[hx-RW/2,bz],[hx+RW/2,bz]].forEach(function(xz){
+    var p=mesh(cyl(0.028,0.028,RH+0.15,8),postM);
+    p.position.set(xz[0],(RH+0.15)/2,xz[1]);gp.add(p);scene.add(p);
+  });
+  // Horizontal beams front+back at each level
+  for(var li=0;li<=N_LAYERS;li++){
+    var by=li*LAYER_H+0.12;
+    var fb=mesh(box(RW,0.020,0.025),beamM);fb.position.set(hx,by,fz);gp.add(fb);scene.add(fb);
+    var bb=mesh(box(RW,0.020,0.025),beamM);bb.position.set(hx,by,bz);gp.add(bb);scene.add(bb);
+  }
+  // X-bracing on left+right side panels
+  var diagLen=Math.sqrt(RD*RD+RH*RH);
+  var diagAng=Math.atan2(RH,RD);
+  [hx-RW/2-0.006,hx+RW/2+0.006].forEach(function(dx){
+    var d1=mesh(box(0.010,0.010,diagLen),LM(0x1a4a6a));
+    d1.position.set(dx,RH/2,hz);d1.rotation.x=diagAng;gp.add(d1);scene.add(d1);
+    var d2=mesh(box(0.010,0.010,diagLen),LM(0x1a4a6a));
+    d2.position.set(dx,RH/2,hz);d2.rotation.x=-diagAng;gp.add(d2);scene.add(d2);
+  });
+
+  // Per-layer: tilted shelf + dividers + products + LED strip + LED domes
+  for(var li2=0;li2<N_LAYERS;li2++){
+    var sy=li2*LAYER_H+0.12+0.010;
+    // Tilted shelf panel
+    var sp=mesh(box(RW-0.04,0.010,RD-0.04),shelfM);
+    sp.position.set(hx,sy,hz);sp.rotation.x=SLOPE;gp.add(sp);scene.add(sp);
+    // Track dividers
+    for(var ti=0;ti<=N_TRK;ti++){
+      var tx=hx-RW/2+0.03+ti*TRACK_W;
+      var dv=mesh(box(0.006,0.058,RD-0.06),divM);
+      dv.position.set(tx,sy+0.032,hz);dv.rotation.x=SLOPE;gp.add(dv);scene.add(dv);
+    }
+    // Products: one SKU color per track, fill level varies by SKU frequency
+    var yFront=sy+0.058+Math.tan(-SLOPE)*RD*0.5;
+    var _laneStart=_LANES.length;
+    for(var ti2=0;ti2<N_TRK;ti2++){
+      var tx2=hx-RW/2+0.03+(ti2+0.5)*TRACK_W;
+      // 南北镜像：同一 x 位置两侧 SKU 颜色一致（俯视对称）
+      var _mapRi=_nri>=5?_nri-5:_nri;
+      var _s=_skus[_nclMap[_mapRi*8+ti2]],pC=_s[0],nP=_s[1];
+      var _laneInstIds=[];
+      for(var pi=0;pi<nP;pi++){
+        var dOff=0.022+pi*(BOX_D+0.004);
+        var pz2=rd.flip?fz-dOff:fz+dOff;
+        var pyAdj=dOff*Math.tan(Math.abs(SLOPE));
+        _iM.makeTranslation(tx2,yFront+BOX_H*0.5+pyAdj,pz2);
+        _iC.setHex(pC);_im.setMatrixAt(_iidx,_iM);_im.setColorAt(_iidx,_iC);
+        _laneInstIds.push(_iidx);_iidx++;
+      }
+      _LANES.push({hx:hx,flip:rd.flip,fz:fz,bz:bz,layer:li2,track:ti2,tx:tx2,
+        frontY:yFront+BOX_H*0.5,tanSlope:Math.tan(Math.abs(SLOPE)),
+        BOX_D:BOX_D,BOX_H:BOX_H,instIds:_laneInstIds,fill:nP,maxFill:nP,
+        ledDome:null,ledOn:false,pC:pC,restocking:false});
+    }
+    // LED mounting strip (back/load side)
+    var ls=mesh(box(RW-0.04,0.016,0.020),LM(0x080e0c));
+    ls.position.set(hx,sy+0.012,bz+0.012);gp.add(ls);scene.add(ls);
+    // LED dome per track (normally OFF; lights up green when lane needs restock)
+    for(var ti3=0;ti3<N_TRK;ti3++){
+      var tx3=hx-RW/2+0.03+(ti3+0.5)*TRACK_W;
+      var dome=mesh(cyl(0.009,0.009,0.013,7),
+        new THREE.MeshLambertMaterial({color:0x00ff44,emissive:new THREE.Color(0x00cc33),emissiveIntensity:0}));
+      dome.position.set(tx3,sy+0.022,bz+0.018);gp.add(dome);scene.add(dome);
+      _LANES[_laneStart+ti3].ledDome=dome;
+    }
+    // ── Lane scan marker per track（机器人视觉探头拣选前扫码用）──
+    var _mFaceZ=rd.flip?(fz+0.0125):(fz-0.0125);
+    var _mFwd=rd.flip?1:-1;
+    var _mCZ=_mFaceZ+_mFwd*(_LMT*0.5+0.001);
+    var _mCY=li2*LAYER_H+0.18;
+    for(var _tiq=0;_tiq<N_TRK;_tiq++){
+      var _mCX=hx-RW/2+0.03+(_tiq+0.5)*TRACK_W;
+      _lmM.makeTranslation(_mCX,_mCY,_mCZ);_lmBg.setMatrixAt(_lmN,_lmM);
+      _lmM.makeTranslation(_mCX,_mCY,_mCZ+_mFwd*0.0012);_lmPt.setMatrixAt(_lmN,_lmM);
+      _lmN++;
+    }
+  }
+  // Top color band + zone label
+  var topY=N_LAYERS*LAYER_H+0.12;
+  var band=mesh(box(RW,0.12,RD),LM(rd.col));
+  band.position.set(hx,topY+0.06,hz);gp.add(band);scene.add(band);
+  var zl=mkLbl(rd.label,10,'#aaccee');
+  zl.scale.set(1.8,0.42,1);zl.position.set(hx,topY+0.45,hz);scene.add(zl);
+});
+
+// Lane scan marker finalization deferred — CL racks share same InstancedMesh, finalize after both zones
+
+// ── EEF引用数组（动画系统用，9台delta机器人末端执行器部件引用）──
+var _ROBOT_EEFS=[];
+
+// ── DELTA ROBOTS (5 robots) — x对齐货架中心 ──
+var robotDefs=[
+  {x:-7.5,z:0,gp:gR1,name:'R1',st:'St.120',prod:'礼品拣选',col:0xe8e8e8},
+  {x:-5.5,z:0,gp:gR2,name:'R2',st:'St.120',prod:'礼品拣选②',col:0xe8e8e8},
+  {x:-3.5,z:0,gp:gR3,name:'R3',st:'St.130',prod:'护眼液拣选',col:0xe8e8e8},
+  {x:-1.5,z:0,gp:gR4,name:'R4',st:'St.130',prod:'护理液拣选',col:0xe8e8e8},
+  {x:0.5, z:0,gp:gR5,name:'R5',st:'St.130',prod:'伴侣盒拣选',col:0xe8e8e8}
+];
+robotDefs.forEach(function(rd,ri){
+  var cx=rd.x,cz=rd.z;
+  // ── GANTRY FRAME — gW=2.0对齐货架宽，gD=4.0立柱落在货架中心z=±2.0 ──
+  // 支撑结构：方管截面钢柱（对应PDF机器人支撑结构方管立柱）
+  // gH=5.0：接近仓库天花板，确保伸缩臂能覆盖货架全高（0.12m～2.2m）
+  var gW=2.0,gD=4.0,gH=5.0;
+  var postM=LM(0x1a3a4a,0x050e18);
+  [[-gW/2,-gD/2],[gW/2,-gD/2],[-gW/2,gD/2],[gW/2,gD/2]].forEach(function(xz){
+    var post=mesh(box(0.065,gH,0.065),postM);post.position.set(cx+xz[0],gH/2,cz+xz[1]);
+    gGantry.add(post);scene.add(post);
+    // 立柱顶部连接板（对应PDF支撑框架节点细节）
+    var cap=mesh(box(0.095,0.030,0.095),LM(0x2a4a60));cap.position.set(cx+xz[0],gH+0.015,cz+xz[1]);gGantry.add(cap);scene.add(cap);
+  });
+  // Top rails: front/back cross beams + side longitudinal rails（方管横梁）
+  var trM=LM(0x1e4060);
+  [[gW,0.08,0.08,cx,gH,cz-gD/2],[gW,0.08,0.08,cx,gH,cz+gD/2],
+   [0.08,0.08,gD,cx-gW/2,gH,cz],[0.08,0.08,gD,cx+gW/2,gH,cz]].forEach(function(d){
+    var b=mesh(box(d[0],d[1],d[2]),trM);b.position.set(d[3],d[4],d[5]);gGantry.add(b);scene.add(b);
+  });
+  // Station label on gantry
+  var stLbl=mkLbl(rd.st+' · '+rd.name+' · '+rd.prod,10,'#6699cc');
+  stLbl.scale.set(2.0,0.44,1);stLbl.position.set(cx,gH+0.35,cz);scene.add(stLbl);
+
+
+  // ── DELTA ROBOT BODY ──
+  var bodyY=gH-0.12;
+  // Upper dome housing
+  var dome=mesh(cyl(0.38,0.28,0.32,6),LM(rd.col,0x040c18));dome.position.set(cx,bodyY,cz);
+  rd.gp.add(dome);scene.add(dome);
+  var domeCap=mesh(cyl(0.38,0.38,0.04,6),LM(0xcccccc));domeCap.position.set(cx,bodyY+0.16,cz);
+  rd.gp.add(domeCap);scene.add(domeCap);
+  // Status LED strip on housing
+  for(var si2=0;si2<6;si2++){
+    var sa=si2*Math.PI/3;
+    var sl=mesh(sph(0.016,6),new THREE.MeshLambertMaterial({color:0x44ff88,emissive:new THREE.Color(0x22aa44),emissiveIntensity:1.2}));
+    sl.position.set(cx+Math.sin(sa)*0.36,bodyY+0.08,cz+Math.cos(sa)*0.36);rd.gp.add(sl);scene.add(sl);
+  }
+
+  // Three upper arms (120° apart)
+  for(var ai=0;ai<3;ai++){
+    var angle=ai*(Math.PI*2/3);
+    var aR=0.30; // arm radius from center
+    var ua_x=cx+Math.sin(angle)*aR, ua_z=cz+Math.cos(angle)*aR;
+    // Upper arm bracket
+    var uab=mesh(box(0.05,0.06,0.05),LM(0xe0e0e0));
+    uab.position.set(ua_x,bodyY-0.12,ua_z);rd.gp.add(uab);scene.add(uab);
+    // Upper arm (bicep)
+    var uaL=0.55;
+    var fa_x=ua_x+Math.sin(angle)*0.15, fa_z=ua_z+Math.cos(angle)*0.15;
+    var ual=mesh(box(0.05,uaL,0.05),LM(0xe8e8e8));
+    ual.position.set(ua_x+Math.sin(angle)*0.04,bodyY-0.12-uaL/2,ua_z+Math.cos(angle)*0.04);
+    ual.rotation.x=ai===0?-0.15:0.1;rd.gp.add(ual);scene.add(ual);
+    // Forearm rods (2 parallel)
+    var faY=bodyY-0.12-uaL-0.10;
+    var faL=0.72;
+    [-0.028,0.028].forEach(function(off){
+      var far=mesh(cyl(0.013,0.013,faL,6),LM(0x1a1a1a));
+      var offX=Math.cos(angle)*off, offZ=-Math.sin(angle)*off;
+      far.position.set(ua_x+Math.sin(angle)*0.06+offX,faY,ua_z+Math.cos(angle)*0.06+offZ);
+      far.rotation.x=0.15;rd.gp.add(far);scene.add(far);
+    });
+  }
+
+  // ── 三段式伸缩臂 + 末端执行器 + 摄像机/视觉系统（对应PDF标注细节）──
+  var eeY=gH-0.12-0.55-0.72-0.15;
+  // 腕关节盘（Delta机器人与伸缩臂连接）
+  var wrist=mesh(cyl(0.12,0.12,0.04,10),LM(0xb0b8c0));wrist.position.set(cx,eeY+0.02,cz);gEEF.add(wrist);scene.add(wrist);
+  // Z轴直线伺服模组（矩形壳体）
+  var actBox=mesh(box(0.13,0.24,0.09),LM(0xc8d0d8));actBox.position.set(cx,eeY-0.13,cz);gEEF.add(actBox);scene.add(actBox);
+  var actRib=mesh(box(0.015,0.22,0.092),LM(0xa0acb4));actRib.position.set(cx+0.058,eeY-0.13,cz);gEEF.add(actRib);scene.add(actRib);
+  var actLED=mesh(sph(0.011,6),new THREE.MeshLambertMaterial({color:0x00ff88,emissive:new THREE.Color(0x008844),emissiveIntensity:1.5}));
+  actLED.position.set(cx-0.068,eeY-0.07,cz);gEEF.add(actLED);scene.add(actLED);
+  // 三段式伸缩臂（对应PDF三段式伸缩臂）
+  // 缩进时极短（嵌套于壳体内），伸出时覆盖货架全高（s2最长1.30m，s3最长1.00m）
+  // 第一段（外管，0.80m）：固定结构管
+  var s1top=eeY-0.26,s1len=0.80;
+  var sh1=mesh(cyl(0.044,0.044,s1len,10),LM(0xa8b2bc));sh1.position.set(cx,s1top-s1len/2,cz);gEEF.add(sh1);scene.add(sh1);
+  var s1bot=s1top-s1len;
+  // 第二段（中管）：缩进时仅露0.15m短节，完全伸出时1.30m
+  var s2len=0.15;
+  var sh2=mesh(cyl(0.032,0.032,s2len,10),LM(0xb4bec8));sh2.position.set(cx,s1bot-s2len/2,cz);gEEF.add(sh2);scene.add(sh2);
+  var s2bot=s1bot-s2len;
+  // 第三段（内管，最细）：缩进时仅露0.10m短节，完全伸出时1.00m
+  var s3len=0.10;
+  var sh3=mesh(cyl(0.022,0.022,s3len,10),LM(0xc2ccd4));sh3.position.set(cx,s2bot-s3len/2,cz);gEEF.add(sh3);scene.add(sh3);
+  var s3bot=s2bot-s3len;
+  // 末端工具座（紧接第三段底部）
+  var toolMnt=mesh(box(0.095,0.050,0.095),LM(0x283848));toolMnt.position.set(cx,s3bot-0.025,cz);gEEF.add(toolMnt);scene.add(toolMnt);
+  // 真空吸盘组（4点阵列，存引用供动画使用）
+  var _cups_arr=[];
+  [[-0.028,-0.028],[0.028,-0.028],[-0.028,0.028],[0.028,0.028]].forEach(function(xzOff){
+    var cup=mesh(cyl(0.012,0.008,0.022,8),LM(0x1a2030));cup.position.set(cx+xzOff[0],s3bot-0.062,cz+xzOff[1]);gEEF.add(cup);scene.add(cup);
+    _cups_arr.push({m:cup,ox:xzOff[0],oz:xzOff[1]});
+  });
+  // 摄像机/视觉系统（挂在第一段伸缩臂底端侧面，对应PDF摄像机/视觉系统标注位置）
+  var camY=s1bot+0.06;
+  var camBkt=mesh(box(0.006,0.075,0.006),LM(0x3a4858));camBkt.position.set(cx-0.065,camY+0.038,cz+0.028);gEEF.add(camBkt);scene.add(camBkt);
+  var camB=mesh(box(0.050,0.038,0.050),LM(0x0a1825));camB.position.set(cx-0.090,camY,cz+0.028);gEEF.add(camB);scene.add(camB);
+  var camL=mesh(cyl(0.013,0.010,0.020,8),LM(0x050a10));camL.rotation.x=Math.PI/2;camL.position.set(cx-0.090,camY,cz+0.040);gEEF.add(camL);scene.add(camL);
+  // 存入EEF引用数组（供动画系统使用）
+  _ROBOT_EEFS.push({
+    cx:cx,cz:cz,eeY:eeY,s1bot:s1bot,s1len:s1len,s2len:s2len,s3len:s3len,
+    wrist:wrist,actBox:actBox,actRib:actRib,
+    sh1:sh1,sh2:sh2,sh3:sh3,
+    toolMnt:toolMnt,cups:_cups_arr,
+    camBkt:camBkt,camB:camB,camL:camL,
+    prod:null,ball:null,state:'idle',t:-Math.random()*4.0,
+    tgtX:cx,tgtZ:cz,pickY:0.6,pickExt:0,side:1,prodActive:false,lockedCarton:null,retStartEx:0,
+    picksForCarton:0,picksDone:0,fastMode:false
+  });
+});
+
+// ── 安全围栏：左侧围合（非隐形区 x=-13→2）+ 右侧独立围合（隐形区 x=10→19）──
+// 含双扇可开安全门，参考Rob平面图标注位置
+(function buildSafetyFence(){
+  var FH=1.24; // 高度（1.85降低1/3）
+  var FZN=2.2, FZS=-2.2; // 北/南侧围栏Z坐标，沿龙门架外侧
+
+  var postMat=new THREE.MeshLambertMaterial({color:0xddaa00,emissive:new THREE.Color(0x443300),emissiveIntensity:0.4});
+  var railMat=new THREE.MeshLambertMaterial({color:0xbbaa22,emissive:new THREE.Color(0x332200),emissiveIntensity:0.3});
+  var meshMat=new THREE.MeshLambertMaterial({color:0xccaa00,transparent:true,opacity:0.18,depthWrite:false,side:THREE.DoubleSide});
+  var edgeMat=new THREE.LineBasicMaterial({color:0x998800,transparent:true,opacity:0.55});
+  var warnMat=new THREE.MeshLambertMaterial({color:0xaa8800});
+
+  function fPost(x,z){
+    var p=mesh(box(0.048,FH,0.048),postMat);p.position.set(x,FH/2,z);gFence.add(p);scene.add(p);
+  }
+  function addHRails(ctr,len,fz,isX){
+    for(var ry=0.10;ry<FH-0.02;ry+=0.18){
+      var r=isX?mesh(box(len+0.04,0.020,0.020),railMat):mesh(box(0.020,0.020,len+0.04),railMat);
+      r.position.set(isX?ctr:fz,ry,isX?fz:ctr);gFence.add(r);scene.add(r);
+    }
+  }
+  function addVBars(a0,a1,fz,isX){
+    for(var vi=a0+0.22;vi<a1-0.04;vi+=0.22){
+      var vb=mesh(box(0.016,FH-0.06,0.016),railMat);
+      vb.position.set(isX?vi:fz,FH/2,isX?fz:vi);gFence.add(vb);scene.add(vb);
+    }
+  }
+  function fPanelX(x0,x1,z){
+    var w=x1-x0,cx=(x0+x1)/2;if(w<0.05)return;
+    var g=new THREE.BoxGeometry(w-0.06,FH-0.06,0.020);
+    var pm=mesh(g,meshMat);pm.position.set(cx,FH/2,z);gFence.add(pm);scene.add(pm);
+    var pe=new THREE.LineSegments(new THREE.EdgesGeometry(g),edgeMat);pe.position.set(cx,FH/2,z);scene.add(pe);
+    addHRails(cx,w,z,true);addVBars(x0,x1,z,true);
+  }
+  function fPanelZ(x,z0,z1){
+    var d=z1-z0,cz=(z0+z1)/2;if(d<0.05)return;
+    var g=new THREE.BoxGeometry(0.020,FH-0.06,d-0.06);
+    var pm=mesh(g,meshMat);pm.position.set(x,FH/2,cz);gFence.add(pm);scene.add(pm);
+    var pe=new THREE.LineSegments(new THREE.EdgesGeometry(g),edgeMat);pe.position.set(x,FH/2,cz);scene.add(pe);
+    addHRails(cz,d,x,false);addVBars(z0,z1,x,false);
+  }
+  // 传送带穿越端封板（z=0留0.5m开口）
+  function fEndWall(fx){
+    fPanelZ(fx,0.5,FZN);fPanelZ(fx,FZS,-0.5);
+    fPost(fx,FZN);fPost(fx,FZS);
+  }
+
+  var frameMat=new THREE.MeshLambertMaterial({color:0xee8800,emissive:new THREE.Color(0x663300),emissiveIntensity:0.5});
+  var handleMat=new THREE.MeshLambertMaterial({color:0xcccccc,emissive:new THREE.Color(0x444444),emissiveIntensity:0.3});
+  var dm=new THREE.MeshLambertMaterial({color:0xddaa00,transparent:true,opacity:0.55,side:THREE.DoubleSide});
+
+  // ── 门扇内部格网 ──
+  function addDoorGrid(grp,W,hx,side){
+    var hw=W-0.08;
+    for(var ry=0.14;ry<FH-0.06;ry+=0.20){
+      var rb=mesh(box(hw,0.018,0.018),railMat);rb.position.set(hx+side*hw/2,ry,0);grp.add(rb);
+    }
+    for(var vi=0.18;vi<hw-0.06;vi+=0.20){
+      var vb=mesh(box(0.014,FH-0.08,0.014),railMat);vb.position.set(hx+side*vi,FH/2,0);grp.add(vb);
+    }
+  }
+  // ── 门框：上横梁+两侧竖框 ──
+  function addDoorFrame(x0,x1,fz){
+    var W=x1-x0;
+    var ft=mesh(box(W+0.06,0.055,0.055),frameMat);ft.position.set((x0+x1)/2,FH-0.01,fz);scene.add(ft);
+    [x0,x1].forEach(function(fx){
+      var fs=mesh(box(0.055,FH,0.055),frameMat);fs.position.set(fx,FH/2,fz);scene.add(fs);
+    });
+  }
+  // ── 门把手（水平拉杆）──
+  function addHandle(grp,hx,fz_local){
+    var bar=mesh(box(0.008,0.008,0.09),handleMat);bar.position.set(hx,FH*0.52,fz_local+0.05);grp.add(bar);
+    var e1=mesh(box(0.008,0.040,0.008),handleMat);e1.position.set(hx,FH*0.52+0.015,fz_local+0.025);grp.add(e1);
+    var e2=mesh(box(0.008,0.040,0.008),handleMat);e2.position.set(hx,FH*0.52-0.015,fz_local+0.025);grp.add(e2);
+  }
+
+  // ── 双扇安全门（打开约70°）── 标准宽度约1.0m
+  function fDoor(x0,x1,fz){
+    var W=x1-x0,hW=W/2;
+    var ang=70*Math.PI/180;
+    var dir=(fz>=0)?1:-1;
+    addDoorFrame(x0,x1,fz);
+    function makeLeaf(hx,side){
+      var grp=new THREE.Group();grp.position.set(hx,0,fz);
+      var panel=mesh(box(hW-0.05,FH-0.07,0.030),dm);
+      panel.position.set(side*(hW-0.05)/2,FH/2,0);grp.add(panel);
+      addDoorGrid(grp,hW,0,side);
+      // 把手在自由端（远离铰链侧）
+      var hx_local=side*(hW-0.12);
+      addHandle(grp,hx_local,0);
+      grp.rotation.y=dir*side*ang;
+      scene.add(grp);gFence.add(grp);
+    }
+    makeLeaf(x0,1);makeLeaf(x1,-1);
+    fPost(x0,fz);fPost(x1,fz);
+    var gw=mesh(box(W,0.008,0.10),warnMat);gw.position.set((x0+x1)/2,0.004,fz);scene.add(gw);
+  }
+
+  // ── 单扇安全门（关闭状态）── 标准宽度约0.9m
+  function fDoorClosed(x0,x1,fz){
+    var W=x1-x0;
+    addDoorFrame(x0,x1,fz);
+    var grp=new THREE.Group();grp.position.set(x0,0,fz);
+    var panel=mesh(box(W-0.05,FH-0.07,0.030),dm);
+    panel.position.set(W/2,FH/2,0);grp.add(panel);
+    addDoorGrid(grp,W,0,1);
+    // 把手在中靠右（latch侧）
+    addHandle(grp,W-0.14,0);
+    // 底部踢脚板
+    var kick=mesh(box(W-0.06,0.12,0.040),frameMat);kick.position.set(W/2,0.06,0);grp.add(kick);
+    scene.add(grp);gFence.add(grp);
+    fPost(x0,fz);fPost(x1,fz);
+    var gw=mesh(box(W,0.008,0.10),warnMat);gw.position.set((x0+x1)/2,0.004,fz);scene.add(gw);
+  }
+
+  // ── 构建围栏一侧，doorsArr元素：[x0,x1] 双扇开启 | [x0,x1,'closed'] 单扇关闭 | [x0,x1,'gap'] 开口（传送带穿越）──
+  function buildSide(rx0,rx1,fz,doorsArr){
+    var xs=[rx0];
+    for(var px=rx0+1;px<=rx1+0.001;px+=1)xs.push(parseFloat(px.toFixed(1)));
+    if(xs[xs.length-1]<rx1)xs.push(rx1);
+    doorsArr.forEach(function(d){
+      [d[0],d[1]].forEach(function(v){if(xs.indexOf(v)<0)xs.push(v);});
+    });
+    xs.sort(function(a,b){return a-b;});
+    function inD(a,b){return doorsArr.some(function(d){return a>=d[0]-0.01&&b<=d[1]+0.01;});}
+    function getDoor(a,b){return doorsArr.filter(function(d){return a>=d[0]-0.01&&b<=d[1]+0.01;})[0];}
+    xs.forEach(function(px){
+      // gap类型不压制立柱
+      var mid=doorsArr.some(function(d){return d[2]!=='gap'&&px>d[0]+0.01&&px<d[1]-0.01;});
+      if(!mid)fPost(px,fz);
+    });
+    for(var fi=0;fi<xs.length-1;fi++){
+      var a=xs[fi],b=xs[fi+1];
+      if(inD(a,b)){
+        var ds=getDoor(a,b);
+        if(ds&&ds[2]==='gap'){/* 传送带开口，不画围栏板 */}
+        else if(ds&&ds[2]==='closed')fDoorClosed(a,b,fz);
+        else fDoor(a,b,fz);
+      } else fPanelX(a,b,fz);
+    }
+  }
+  function buildWarning(fx0,fx1){
+    [FZN-0.08,FZS+0.08].forEach(function(wz){
+      var wl=mesh(box(fx1-fx0,0.008,0.09),warnMat);
+      wl.position.set((fx0+fx1)/2,0.005,wz);scene.add(wl);
+    });
+  }
+
+  // ════ 整体围合：x=-13 → x=37 ════
+  // 南侧（FZN=+2.2，面向镜头）：双扇开启门1.0m + 单扇关闭门0.9m
+  buildSide(-13,33,FZN,[[-1.5,-0.5],[9.5,10.4,'closed']]);
+  // 北侧（FZS=-2.2，背向镜头）：同款门 + St.225(x=20.5)和St.220(x=25.5)传送带开口
+  buildSide(-13,33,FZS,[[-1.5,-0.5],[2.5,3.4,'closed'],[20.0,21.0,'gap'],[25.0,26.0,'gap']]);
+  fEndWall(-13);fEndWall(33);
+  buildWarning(-13,37);
+})();
+
+// ── ANDON BOARD · Canvas看板（壁挂式）· 中间缓冲区北墙 ──────────────────
+// 与收货区Andon板一致：大型Canvas实时监控看板，壁挂吊装于北侧墙面 x=6.25
+var _oCvs=null,_oTex=null;
+var _andonT0=Date.now();
+
+// ── 计算看板实时数据 ──
+function _andonMetrics(){
+  var now=new Date();
+  var t=(Date.now()-_andonT0)/1000; // 场景运行秒数（驱动波动）
+  var sh=new Date(now);sh.setHours(8,0,0,0);
+  var shSec=Math.max(0,Math.min(32400,(now-sh)/1000)); // 早班已过秒数（上限9h）
+  var shPct=shSec/32400;
+  // 产能目标：1,700单/班，约5.5 SKU/单，共~9,350 SKU单元
+  var TGT_ORD=1700,TGT_UNIT=9350;
+  var eff=92.4+Math.sin(t*0.07)*2.3+Math.cos(t*0.13)*1.1;
+  eff=+(Math.max(87.5,Math.min(96.8,eff)).toFixed(1));
+  var cmpOrd=Math.floor(shPct*TGT_ORD*(eff/100)*(1+Math.sin(t*0.11)*0.018));
+  var cmpUnit=Math.floor(cmpOrd*(5.2+Math.sin(t*0.05)*0.35));
+  var pndOrd=Math.max(0,Math.floor((TGT_ORD-cmpOrd)*(0.94+Math.sin(t*0.19)*0.04)));
+  var inProg=Math.floor(22+Math.sin(t*0.29)*8+Math.cos(t*0.17)*5);inProg=Math.max(10,Math.min(38,inProg));
+  var avgCT=+(4.55+Math.sin(t*0.09)*0.28+Math.cos(t*0.23)*0.13).toFixed(2);
+  avgCT=Math.max(3.9,Math.min(5.3,avgCT));
+  var oeeOvr=+(Math.min(eff,96.5)).toFixed(1);
+  // 机器人数据（9台）
+  var rDefs=[
+    {id:'R1',role:'礼品拣选①',zone:'Z1-Z2',bpd:18240,ph:0.0,isCL:false},
+    {id:'R2',role:'礼品拣选②',zone:'Z3-Z4',bpd:17520,ph:0.7,isCL:false},
+    {id:'R3',role:'护眼液拣选',zone:'Z5-Z6',bpd:19080,ph:1.4,isCL:false},
+    {id:'R4',role:'护理液拣选',zone:'Z7-Z8',bpd:18360,ph:2.1,isCL:false},
+    {id:'R5',role:'伴侣盒拣选',zone:'Z9-Z10',bpd:16920,ph:2.8,isCL:false},
+    {id:'R6',role:'隐形①拣选',zone:'Z11-Z12',bpd:20160,ph:3.5,isCL:true},
+    {id:'R7',role:'隐形②拣选',zone:'Z13-Z14',bpd:19440,ph:4.2,isCL:true},
+    {id:'R8',role:'隐形③拣选',zone:'Z15-Z16',bpd:19800,ph:4.9,isCL:true},
+    {id:'R9',role:'隐形④拣选',zone:'Z17-Z18',bpd:18720,ph:5.6,isCL:true},
+  ];
+  var robots=rDefs.map(function(r){
+    var rate=+(r.bpd/540+Math.sin(t*0.11+r.ph)*1.3).toFixed(1);
+    rate=Math.max(14,Math.min(22,rate));
+    var picks=Math.floor(shPct*(r.bpd+Math.sin(t*0.08+r.ph)*80));
+    var util=Math.floor(94+Math.sin(t*0.07+r.ph)*3);util=Math.max(85,Math.min(99,util));
+    return {id:r.id,role:r.role,zone:r.zone,rate:rate,picks:picks,util:util,isCL:r.isCL,st:'运行'};
+  });
+  // 站点数据
+  var stDefs=[
+    {id:'St.100',name:'自动成箱',  base:4.1,  ph:0.14,isCL:false},
+    {id:'St.105',name:'QR打印',    base:1.20, ph:0.18,isCL:false},
+    {id:'St.106',name:'MES扫码',   base:0.32, ph:0.22,isCL:false},
+    {id:'St.120',name:'礼品拣选',  base:3.82, ph:0.09,isCL:false},
+    {id:'St.130',name:'护理品拣',  base:4.22, ph:0.11,isCL:false},
+    {id:'St.140',name:'隐形①②区', base:3.52, ph:0.12,isCL:true},
+    {id:'St.150',name:'隐形③④区', base:3.62, ph:0.10,isCL:true},
+    {id:'St.210',name:'装箱核验',  base:0.82, ph:0.16,isCL:false},
+    {id:'St.230',name:'自动封箱',  base:2.12, ph:0.08,isCL:false},
+    {id:'St.250',name:'标签核验',  base:0.52, ph:0.20,isCL:false},
+  ];
+  var stations=stDefs.map(function(s){
+    var ct=+(s.base+Math.sin(t*s.ph)*0.22).toFixed(2);
+    return {id:s.id,name:s.name,ct:ct,isCL:s.isCL,ok:ct<5.0};
+  });
+  // 货架库存（Z1-Z18）
+  var zDefs=[
+    {id:'Z1', prod:'礼品A',  cap:40,isCL:false},{id:'Z2', prod:'礼品B',  cap:40,isCL:false},
+    {id:'Z3', prod:'礼品C',  cap:40,isCL:false},{id:'Z4', prod:'礼品D',  cap:40,isCL:false},
+    {id:'Z5', prod:'护眼液', cap:36,isCL:false},{id:'Z6', prod:'护眼液', cap:36,isCL:false},
+    {id:'Z7', prod:'护理液', cap:36,isCL:false},{id:'Z8', prod:'护理液', cap:36,isCL:false},
+    {id:'Z9', prod:'伴侣盒', cap:32,isCL:false},{id:'Z10',prod:'伴侣盒', cap:32,isCL:false},
+    {id:'Z11',prod:'隐形①', cap:48,isCL:true}, {id:'Z12',prod:'隐形②', cap:48,isCL:true},
+    {id:'Z13',prod:'隐形③', cap:48,isCL:true}, {id:'Z14',prod:'隐形④', cap:48,isCL:true},
+    {id:'Z15',prod:'隐形⑤', cap:48,isCL:true}, {id:'Z16',prod:'隐形⑥', cap:48,isCL:true},
+    {id:'Z17',prod:'隐形⑦', cap:48,isCL:true}, {id:'Z18',prod:'隐形⑧', cap:48,isCL:true},
+  ];
+  var zones=zDefs.map(function(z,i){
+    var base=0.62+Math.sin(t*0.04+i*0.68)*0.24+Math.cos(t*0.07+i*0.51)*0.09;
+    base=Math.max(0.10,Math.min(0.98,base));
+    var pct=Math.floor(base*100);
+    return {id:z.id,prod:z.prod,cap:z.cap,pct:pct,isCL:z.isCL,
+            st:pct<20?'low':pct<45?'med':'ok'};
+  });
+  // 近期告警（按班次时段过滤）
+  var allAlerts=[
+    {th:8, tm:'08:14','msg':'Z7 护理液补货完成，恢复满载','lv':0},
+    {th:8, tm:'08:36','msg':'R5 伴侣盒拣选速度偏低，系统已自动调速','lv':1},
+    {th:9, tm:'09:12','msg':'St.230 封箱机胶带余量预警，已通知备料','lv':1},
+    {th:9, tm:'09:50','msg':'Z3 礼品C存量低于20%，触发补货请求','lv':1},
+    {th:10,tm:'10:24','msg':'订单峰值波动，在线队列最高达35单','lv':1},
+    {th:10,tm:'10:58','msg':'R6 本班拣选突破5000次（班次里程碑）','lv':0},
+    {th:11,tm:'11:32','msg':'全线综合效率稳定在93%以上，保持中','lv':0},
+    {th:12,tm:'12:06','msg':'午班换岗完成，传送带持续运行无停线','lv':0},
+    {th:13,tm:'13:15','msg':'Z11 隐形①库存低于25%，已安排补货','lv':1},
+    {th:14,tm:'14:02','msg':'R3 护眼液拣选连续高速运行2h，状态良好','lv':0},
+  ];
+  var curH=now.getHours();
+  var alerts=allAlerts.filter(function(a){return a.th<=curH;}).slice(-4);
+  // 每小时产量（班次参考数据）
+  var hourly=[830,872,918,885,940,968,924,952,938];
+  return {now:now,t:t,shPct:shPct,shSec:shSec,eff:eff,oeeOvr:oeeOvr,
+    cmpOrd:cmpOrd,pndOrd:pndOrd,inProg:inProg,avgCT:avgCT,
+    tgtOrd:TGT_ORD,cmpUnit:cmpUnit,
+    robots:robots,stations:stations,zones:zones,alerts:alerts,hourly:hourly};
+}
+
+// ── 绘制看板 ──
+function _drawAndon(cvs){
+  var W=cvs.width,H=cvs.height;
+  var c=cvs.getContext('2d');
+  var F='"PingFang SC","Microsoft YaHei",Arial,sans-serif';
+  var m=_andonMetrics();
+  c.clearRect(0,0,W,H);
+  c.fillStyle='#010c1a';c.fillRect(0,0,W,H);
+
+  // ── HEADER (y=0-78) ──
+  var gr=c.createLinearGradient(0,0,0,78);
+  gr.addColorStop(0,'#003080');gr.addColorStop(1,'#001840');
+  c.fillStyle=gr;c.fillRect(0,0,W,78);
+  c.strokeStyle='#0a4888';c.lineWidth=1.5;c.beginPath();c.moveTo(0,78);c.lineTo(W,78);c.stroke();
+  c.fillStyle='#66bbff';c.font='bold 27px '+F;
+  c.textAlign='left';c.textBaseline='middle';
+  c.fillText('ANDON  ·  MES 订单履约实时看板',22,25);
+  c.fillStyle='#4a8aaa';c.font='15px '+F;
+  c.fillText('复杂多SKU电商仓  ·  Zone 1–18  ·  9台Delta机器人  ·  全自动封箱贴标出库',22,52);
+  // Clock
+  var hn=m.now,hh=hn.getHours(),mm=hn.getMinutes(),ss=hn.getSeconds();
+  var tStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss;
+  var dStr=hn.getFullYear()+'/'+(hn.getMonth()+1<10?'0':'')+(hn.getMonth()+1)+'/'+(hn.getDate()<10?'0':'')+hn.getDate();
+  c.fillStyle='#00eeff';c.font='bold 28px '+F;c.textAlign='right';c.textBaseline='middle';
+  c.fillText(tStr,W-18,25);
+  c.fillStyle='#3a7088';c.font='14px '+F;c.fillText(dStr+'  早班 08:00–17:00',W-18,52);
+  // 班次进度条
+  c.fillStyle='#002255';c.fillRect(22,67,W-44,8);
+  var pbw=Math.floor((W-44)*m.shPct);
+  c.fillStyle='#1166cc';c.fillRect(22,67,pbw,8);
+  c.fillStyle='rgba(255,255,255,0.12)';c.fillRect(22,67,pbw,4);
+  c.fillStyle='#2a6888';c.font='11px '+F;c.textAlign='right';c.textBaseline='top';
+  c.fillText('班次进度 '+(m.shPct*100).toFixed(0)+'%  ·  已运行 '+Math.floor(m.shSec/3600)+'h'+Math.floor((m.shSec%3600)/60)+'min',W-22,68);
+
+  // ── KPI 行 (y=82-282) ──
+  var kH=198,kY=82,kW=W/5;
+  var cmpPct=(m.cmpOrd/m.tgtOrd*100).toFixed(1);
+  var kpis=[
+    {lbl:'今日已完成订单',val:m.cmpOrd.toLocaleString(),unit:'单',
+     sub:'班次目标 '+m.tgtOrd.toLocaleString()+' 单  ·  完成 '+cmpPct+'%',vc:'#00ddaa',bg:'#001c2e'},
+    {lbl:'出库SKU单元数', val:m.cmpUnit.toLocaleString(),unit:'件',
+     sub:'均 '+(m.cmpOrd>0?(m.cmpUnit/m.cmpOrd).toFixed(1):0)+' 件/单  ·  进行中 '+m.inProg+' 单',vc:'#44aaff',bg:'#001228'},
+    {lbl:'当前在线队列',  val:m.inProg.toString(),unit:'单',
+     sub:'待拣选 '+m.pndOrd+' 单  ·  剩余目标 '+(m.tgtOrd-m.cmpOrd)+' 单',vc:'#ffcc33',bg:'#1a1200'},
+    {lbl:'综合平均 CT',   val:m.avgCT.toFixed(1),unit:'秒/箱',
+     sub:'目标 ≤5s  '+(m.avgCT<=5?'✓ 达标':'⚠ 偏高')+' · OEE '+m.oeeOvr+'%',vc:'#cc88ff',bg:'#120a20'},
+    {lbl:'全线综合效率',  val:m.eff.toFixed(1),unit:'%',
+     sub:'班次目标 ≥90%  '+(m.eff>=90?'✓ 达标':'⚠ 低于目标'),vc:'#ff8844',bg:'#1a0e00'},
+  ];
+  kpis.forEach(function(d,i){
+    var x=i*kW;
+    c.fillStyle=d.bg;c.fillRect(x+3,kY+3,kW-6,kH-6);
+    c.strokeStyle='#0a2244';c.lineWidth=1.5;c.strokeRect(x+3,kY+3,kW-6,kH-6);
+    c.fillStyle=d.vc;c.fillRect(x+3,kY+3,5,kH-6);
+    c.fillStyle='#4a7a98';c.font='17px '+F;c.textAlign='left';c.textBaseline='top';
+    c.fillText(d.lbl,x+18,kY+12);
+    var vlen=d.val.length,fsize=vlen>=6?58:vlen>=4?70:80;
+    c.fillStyle=d.vc;c.font='bold '+fsize+'px '+F;
+    c.textAlign='left';c.textBaseline='middle';
+    c.fillText(d.val,x+14,kY+118);
+    c.fillStyle=d.vc;c.font='bold 20px '+F;c.textBaseline='middle';
+    c.fillText(d.unit,x+14+c.measureText(d.val).width+5,kY+124);
+    c.fillStyle='#3a6678';c.font='14.5px '+F;c.textBaseline='bottom';
+    c.fillText(d.sub,x+16,kY+kH-8);
+  });
+
+  // ── 机器人面板 (y=285-452) ──
+  c.fillStyle='#010d1a';c.fillRect(0,285,W,167);
+  c.fillStyle='#2a5577';c.font='bold 16px '+F;c.textAlign='left';c.textBaseline='top';
+  c.fillText('▌ Delta机器人实时拣选状态',18,291);
+  c.fillStyle='#1a4a66';c.font='12px '+F;
+  c.fillText('R1–R5  非隐形区  Z1–Z10  /',280,294);
+  c.fillStyle='#1a5a8a';c.fillText('  R6–R9  隐形眼镜区  Z11–Z18',430,294);
+  var rW=W/9,rH=132,rY=308;
+  m.robots.forEach(function(r,i){
+    var rx=i*rW+4;
+    c.fillStyle=r.isCL?'#001826':'#001520';
+    c.fillRect(rx,rY,rW-8,rH);
+    c.strokeStyle=r.isCL?'#003a55':'#002830';c.lineWidth=1;c.strokeRect(rx,rY,rW-8,rH);
+    // 顶部色条
+    c.fillStyle=r.isCL?'#0066aa':'#005544';c.fillRect(rx,rY,rW-8,3);
+    // 状态LED
+    var dotC=r.util>=92?'#00ff66':r.util>=85?'#88ff44':'#ffaa22';
+    c.fillStyle=dotC;c.beginPath();c.arc(rx+16,rY+20,7,0,Math.PI*2);c.fill();
+    c.fillStyle='rgba(255,255,255,0.2)';c.beginPath();c.arc(rx+14,rY+18,3,0,Math.PI*2);c.fill();
+    // ID
+    c.fillStyle='#ddeeff';c.font='bold 20px '+F;c.textAlign='left';c.textBaseline='middle';
+    c.fillText(r.id,rx+29,rY+20);
+    // 角色+Zone
+    c.fillStyle=r.isCL?'#2a88aa':'#3a8870';c.font='11px '+F;c.textBaseline='top';
+    c.fillText(r.role,rx+6,rY+35);
+    c.fillStyle='#2a5566';c.font='11px '+F;c.fillText(r.zone,rx+6,rY+50);
+    // 本班次拣选量（大数）
+    c.fillStyle=dotC;c.font='bold 30px '+F;c.textAlign='center';c.textBaseline='middle';
+    c.fillText(r.picks.toLocaleString(),rx+(rW-8)/2,rY+86);
+    c.fillStyle='#2a5566';c.font='10px '+F;c.textBaseline='bottom';
+    c.fillText('本班次拣选量',rx+(rW-8)/2,rY+rH-24);
+    c.fillStyle=dotC;c.font='11px '+F;
+    c.fillText(r.rate+'次/min  利用率'+r.util+'%',rx+(rW-8)/2,rY+rH-8);
+  });
+
+  // ── 站点状态链 (y=456-586) ──
+  c.fillStyle='#010d1a';c.fillRect(0,456,W,130);
+  c.fillStyle='#2a5577';c.font='bold 16px '+F;c.textAlign='left';c.textBaseline='top';
+  c.fillText('▌ 关键站点运行状态  St.100 → St.250',18,462);
+  var sW=W/10,sH=90,sY=480;
+  m.stations.forEach(function(s,i){
+    var sx=i*sW+3;
+    var col=s.ok?'#00ff66':'#ffaa22';
+    c.fillStyle=s.isCL?'#001828':'#001522';
+    c.fillRect(sx,sY,sW-6,sH);
+    c.strokeStyle=s.isCL?'#003a55':'#003330';c.lineWidth=1;c.strokeRect(sx,sY,sW-6,sH);
+    c.fillStyle=col;c.fillRect(sx,sY,sW-6,4);
+    c.fillStyle='#88bbdd';c.font='bold 14px '+F;c.textAlign='left';c.textBaseline='top';
+    c.fillText(s.id,sx+6,sY+8);
+    c.fillStyle='#3a6a88';c.font='12px '+F;c.fillText(s.name,sx+6,sY+26);
+    c.fillStyle=col;c.font='bold 14px '+F;c.textAlign='center';c.textBaseline='middle';
+    c.fillText('● 运行',sx+(sW-6)/2,sY+60);
+    c.fillStyle='#2a5566';c.font='11px '+F;c.textAlign='center';c.textBaseline='bottom';
+    c.fillText('CT '+s.ct.toFixed(2)+'s',sx+(sW-6)/2,sY+sH-4);
+    if(i<m.stations.length-1){
+      c.fillStyle='#1a4a60';c.font='18px '+F;c.textAlign='center';c.textBaseline='middle';
+      c.fillText('→',sx+sW,sY+sH/2);
+    }
+  });
+
+  // ── 货架库存矩阵 (y=590-760) ──
+  c.fillStyle='#010d1a';c.fillRect(0,590,W,170);
+  c.fillStyle='#2a5577';c.font='bold 16px '+F;c.textAlign='left';c.textBaseline='top';
+  c.fillText('▌ 货架库存实时状态  Z1–Z18',18,596);
+  c.fillStyle='#1a5566';c.font='12px '+F;
+  c.fillText('■ 蓝=正常  ',200,599);
+  c.fillStyle='#aa7700';c.fillText('■ 黄=低于45%  ',320,599);
+  c.fillStyle='#cc3300';c.fillText('■ 红=低于20%',480,599);
+  // Row1: Z1-Z10 (非隐形), Row2: Z11-Z18 (隐形)
+  var zW1=W/10, zW2=W/8, zRowH=58;
+  var zY1=618,zY2=682;
+  m.zones.slice(0,10).forEach(function(z,i){
+    var zx=i*zW1+4,zy=zY1;
+    var fc=z.st==='low'?'#cc3300':z.st==='med'?'#996600':'#005588';
+    var tc=z.st==='low'?'#ff7755':z.st==='med'?'#ffcc44':'#44bbee';
+    c.fillStyle='#001422';c.fillRect(zx,zy,zW1-8,zRowH);
+    c.strokeStyle=fc;c.lineWidth=1.2;c.strokeRect(zx,zy,zW1-8,zRowH);
+    c.fillStyle=tc;c.font='bold 13px '+F;c.textAlign='left';c.textBaseline='top';
+    c.fillText(z.id,zx+5,zy+4);
+    c.fillStyle='#2a6888';c.font='11px '+F;c.fillText(z.prod,zx+5,zy+20);
+    c.fillStyle=tc;c.font='bold 13px '+F;c.textAlign='right';c.textBaseline='top';
+    c.fillText(z.pct+'%',zx+zW1-12,zy+4);
+    var bw=zW1-16;c.fillStyle='#002a3a';c.fillRect(zx+4,zy+38,bw,12);
+    c.fillStyle=fc;c.fillRect(zx+4,zy+38,Math.floor(bw*z.pct/100),12);
+  });
+  m.zones.slice(10).forEach(function(z,i){
+    var zx=i*zW2+4,zy=zY2;
+    var fc='#006699',tc='#44ccff'; // CL区用青色主题
+    if(z.st==='low'){fc='#cc3300';tc='#ff7755';}
+    else if(z.st==='med'){fc='#996600';tc='#ffcc44';}
+    c.fillStyle='#001828';c.fillRect(zx,zy,zW2-8,zRowH);
+    c.strokeStyle=fc;c.lineWidth=1.2;c.strokeRect(zx,zy,zW2-8,zRowH);
+    c.fillStyle=tc;c.font='bold 13px '+F;c.textAlign='left';c.textBaseline='top';
+    c.fillText(z.id,zx+5,zy+4);
+    c.fillStyle='#2a6888';c.font='11px '+F;c.fillText(z.prod,zx+5,zy+20);
+    c.fillStyle=tc;c.font='bold 13px '+F;c.textAlign='right';c.textBaseline='top';
+    c.fillText(z.pct+'%',zx+zW2-12,zy+4);
+    var bw2=zW2-16;c.fillStyle='#002a3a';c.fillRect(zx+4,zy+38,bw2,12);
+    c.fillStyle=fc;c.fillRect(zx+4,zy+38,Math.floor(bw2*z.pct/100),12);
+  });
+
+  // ── 告警记录 (y=764-834) ──
+  c.fillStyle='#010d1a';c.fillRect(0,764,W,70);
+  c.fillStyle='#2a5577';c.font='bold 15px '+F;c.textAlign='left';c.textBaseline='top';
+  c.fillText('▌ 近期事件',18,770);
+  var aW=(W-28)/4;
+  m.alerts.forEach(function(a,i){
+    var ax=14+i*aW,ay=788;
+    var lc=a.lv===0?'#00cc66':'#ffaa22';
+    c.fillStyle='#001828';c.fillRect(ax,ay,aW-8,26);
+    c.strokeStyle=lc;c.lineWidth=1;c.strokeRect(ax,ay,aW-8,26);
+    c.fillStyle=lc;c.font='bold 12px '+F;c.textAlign='left';c.textBaseline='middle';
+    c.fillText(a.lv===0?'●':'⚠',ax+7,ay+13);
+    c.fillText(a.tm,ax+22,ay+13);
+    c.fillStyle='#88aabb';c.font='12px '+F;
+    var msg=a.msg;var mw=aW-90;
+    while(c.measureText(msg).width>mw&&msg.length>5)msg=msg.slice(0,-1);
+    if(msg!==a.msg)msg+='...';
+    c.fillText(msg,ax+72,ay+13);
+  });
+
+  // ── 班次产量趋势 + 系统状态 (y=838-1024) ──
+  c.fillStyle='#020e1a';c.fillRect(0,838,W,186);
+  c.strokeStyle='#0a2a44';c.lineWidth=2;c.beginPath();c.moveTo(0,838);c.lineTo(W,838);c.stroke();
+  // 产量趋势柱状图（左半部分）
+  c.fillStyle='#2a5577';c.font='bold 15px '+F;c.textAlign='left';c.textBaseline='top';
+  c.fillText('▌ 班次每小时产量（箱/小时）',18,845);
+  var barMaxV=Math.max.apply(null,m.hourly);
+  var bChartH=100,bChartX=18,bChartW=W*0.46,bBottomY=958;
+  var bWid=Math.floor(bChartW/m.hourly.length);
+  m.hourly.forEach(function(v,i){
+    var bh=Math.floor(v/barMaxV*bChartH);
+    var bx=bChartX+i*bWid;
+    var bc=v>950?'#00ff88':v>900?'#44aaff':v>860?'#4488cc':'#336688';
+    c.fillStyle=bc;c.fillRect(bx+2,bBottomY-bh,bWid-4,bh);
+    c.fillStyle='rgba(255,255,255,0.08)';c.fillRect(bx+2,bBottomY-bh,bWid-4,Math.floor(bh/3));
+    c.fillStyle='#3a6a88';c.font='11px '+F;c.textAlign='center';c.textBaseline='top';
+    c.fillText((8+i)+':00',bx+bWid/2,bBottomY+4);
+    c.fillStyle=bc;c.font='bold 12px '+F;c.textBaseline='bottom';
+    c.fillText(v,bx+bWid/2,bBottomY-bh-2);
+  });
+  // 基准线
+  c.strokeStyle='#0a2a3a';c.lineWidth=1;c.beginPath();c.moveTo(bChartX,bBottomY);c.lineTo(bChartX+bChartW,bBottomY);c.stroke();
+  c.fillStyle='#1a4a60';c.font='11px '+F;c.textAlign='left';c.textBaseline='bottom';
+  c.fillText('目标 880 箱/h',bChartX,bBottomY-4);
+  c.strokeStyle='#1a4a60';c.lineWidth=1;c.setLineDash([4,6]);
+  var targetY=bBottomY-Math.floor(880/barMaxV*bChartH);
+  c.beginPath();c.moveTo(bChartX,targetY);c.lineTo(bChartX+bChartW,targetY);c.stroke();
+  c.setLineDash([]);
+  // 系统组件健康矩阵（右半部分）
+  var sysItems=[
+    {n:'主传送带',st:1},{n:'成箱机',st:1},{n:'扫码器×12',st:1},{n:'封箱机St.230',st:1},
+    {n:'贴标机St.240',st:1},{n:'Delta R1-R5',st:1},{n:'Delta R6-R9',st:1},
+    {n:'St.210核验',st:1},{n:'St.220分流',st:1},{n:'St.225回流',st:1},
+    {n:'MES系统',st:1},{n:'WMS接口',st:1},
+  ];
+  c.fillStyle='#2a5577';c.font='bold 15px '+F;c.textAlign='left';c.textBaseline='top';
+  c.fillText('▌ 系统组件健康状态',W*0.47+4,845);
+  var siX=W*0.47+4,siW=(W*0.53-22)/6,siY=868;
+  sysItems.forEach(function(s,i){
+    var col=i%6,row=Math.floor(i/6);
+    var sx=siX+col*siW,sy=siY+row*40;
+    c.fillStyle='#001628';c.fillRect(sx,sy,siW-4,30);
+    var lc=s.st===1?'#00ff66':'#ff4444';
+    c.fillStyle=lc;c.beginPath();c.arc(sx+11,sy+15,5,0,Math.PI*2);c.fill();
+    c.fillStyle='#88bbcc';c.font='12px '+F;c.textAlign='left';c.textBaseline='middle';
+    c.fillText(s.n,sx+22,sy+15);
+  });
+  // 底部综合状态栏
+  c.fillStyle='rgba(0,255,100,0.08)';c.fillRect(0,986,W,38);
+  c.strokeStyle='#0a3022';c.lineWidth=1;c.beginPath();c.moveTo(0,986);c.lineTo(W,986);c.stroke();
+  c.fillStyle='#22ee55';c.font='bold 16px '+F;c.textAlign='left';c.textBaseline='middle';
+  c.fillText('● 全线运行正常',18,1005);
+  c.fillStyle='#2a7755';c.font='14px '+F;c.textAlign='center';
+  c.fillText('传送带 ● 正常  ·  Delta×9 ● 全部运行  ·  扫码器×12 ● 在线  ·  封箱贴标 ● 正常  ·  MES/WMS ● 连接  ·  安全围栏 ● 闭合',W/2,1005);
+  c.fillStyle='#3a8866';c.font='bold 15px '+F;c.textAlign='right';
+  c.fillText('综合效率 '+m.eff.toFixed(1)+'%    '+tStr,W-18,1005);
+}
+
+function mkOrderAndon(){
+  var W=2048,H=1024;
+  var cvs=document.createElement('canvas');cvs.width=W;cvs.height=H;
+  _oCvs=cvs;
+  _drawAndon(cvs);
+  var tex=new THREE.CanvasTexture(cvs);
+  _oTex=tex;tex.needsUpdate=true;
+  var geo=new THREE.PlaneGeometry(1,1);
+  var mat=new THREE.MeshBasicMaterial({map:tex,transparent:false});
+  return new THREE.Mesh(geo,mat);
+}
+function mkOrderAndon_UNUSED_STATIC(){
+  var W=2048,H=1024;
+  var cvs=document.createElement('canvas');cvs.width=W;cvs.height=H;
+  _oCvs=cvs;
+  var c=cvs.getContext('2d');
+  var F='"PingFang SC","Microsoft YaHei",Arial,sans-serif';
+  var now=new Date();
+  var dateStr=(now.getFullYear())+'/'+(now.getMonth()+1<10?'0':'')+(now.getMonth()+1)+'/'+(now.getDate()<10?'0':'')+now.getDate();
+  var hh=now.getHours(),mm=now.getMinutes(),ss=now.getSeconds();
+  var timeStr=(hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm+':'+(ss<10?'0':'')+ss;
+
+  // 背景
+  c.fillStyle='#010c1a';c.fillRect(0,0,W,H);
+
+  // 顶部 Header（80px）
+  var grad=c.createLinearGradient(0,0,0,80);
+  grad.addColorStop(0,'#00306e');grad.addColorStop(1,'#001840');
+  c.fillStyle=grad;c.fillRect(0,0,W,80);
+  c.fillStyle='#66bbff';c.font='bold 32px '+F;
+  c.textAlign='left';c.textBaseline='middle';
+  c.fillText('ANDON  ·  MES 订单履约实时看板',22,40);
+  c.fillStyle='#7aadcc';c.font='22px '+F;
+  c.textAlign='center';
+  c.fillText('复杂多SKU电商仓  ·  订单履约全流程  ·  中间缓冲区',W/2,40);
+  c.fillStyle='#00eeff';c.font='bold 30px '+F;
+  c.textAlign='right';
+  c.fillText(timeStr,W-20,30);
+  c.fillStyle='#3a7088';c.font='18px '+F;
+  c.fillText(dateStr+'  早班 08:00–17:00',W-20,62);
+  c.strokeStyle='#0a4080';c.lineWidth=2;
+  c.beginPath();c.moveTo(0,81);c.lineTo(W,81);c.stroke();
+
+  // KPI 行（5格）
+  var kpis=[
+    {lbl:'今日订单量',  val:'4,287',unit:'单',sub:'目标  5,000 单',        vc:'#00ddaa',bg:'#001c2e',sb:'#007755'},
+    {lbl:'已完成出库',  val:'3,841',unit:'单',sub:'完成率  89.6%  ↑',      vc:'#44aaff',bg:'#001228',sb:'#1a5088'},
+    {lbl:'排队待拣选',  val:'446',  unit:'单',sub:'较昨日  -32 单  ↓',     vc:'#ffcc33',bg:'#1a1000',sb:'#886600'},
+    {lbl:'平均成箱CT',  val:'4.3',  unit:'秒',sub:'目标 ≤5秒/箱  ✓',      vc:'#cc88ff',bg:'#120a20',sb:'#663388'},
+    {lbl:'全线效率',    val:'92.4', unit:'%', sub:'班次目标  ≥ 90%  ✓',   vc:'#ff8844',bg:'#1a0e00',sb:'#884400'},
+  ];
+  var kW=W/5,kH=217,kY=83;
+  kpis.forEach(function(d,i){
+    var x=i*kW;
+    c.fillStyle=d.bg;c.fillRect(x+3,kY+3,kW-6,kH-6);
+    c.strokeStyle='#0a2244';c.lineWidth=1.5;c.strokeRect(x+3,kY+3,kW-6,kH-6);
+    c.fillStyle=d.vc;c.fillRect(x+3,kY+3,5,kH-6);
+    c.fillStyle='#5a8aaa';c.font='bold 22px '+F;
+    c.textAlign='left';c.textBaseline='top';
+    c.fillText(d.lbl,x+20,kY+14);
+    c.fillStyle=d.vc;c.font='bold 82px '+F;
+    c.textAlign='left';c.textBaseline='middle';
+    c.fillText(d.val,x+16,kY+130);
+    c.fillStyle='#5a8aaa';c.font='bold 26px '+F;
+    c.textBaseline='middle';
+    c.fillText(d.unit,x+16+c.measureText(d.val).width+8,kY+130);
+    c.fillStyle=d.sb;c.font='19px '+F;
+    c.textBaseline='bottom';
+    c.fillText(d.sub,x+20,kY+kH-10);
+  });
+
+  // 分隔线
+  c.strokeStyle='#06182a';c.lineWidth=3;
+  c.beginPath();c.moveTo(0,302);c.lineTo(W,302);c.stroke();
+
+  // Delta机器人状态（9台，y=305→500）
+  c.fillStyle='#010d1a';c.fillRect(0,305,W,195);
+  c.fillStyle='#2a5577';c.font='bold 20px '+F;
+  c.textAlign='left';c.textBaseline='top';
+  c.fillText('▌ Delta机器人运行状态  R1–R5（非隐形区）  R6–R9（隐形眼镜区）',18,312);
+  var robots=[
+    {id:'R1',role:'礼品拣选①',st:'运行中',spd:'18次/min',c:'#00ff66'},
+    {id:'R2',role:'礼品拣选②',st:'运行中',spd:'17次/min',c:'#00ff66'},
+    {id:'R3',role:'护眼液拣选',st:'运行中',spd:'19次/min',c:'#00ff66'},
+    {id:'R4',role:'护理液拣选',st:'运行中',spd:'18次/min',c:'#00ff66'},
+    {id:'R5',role:'伴侣盒拣选',st:'待  机',spd:'— — —',  c:'#ffaa22'},
+    {id:'R6',role:'隐形①拣选',st:'运行中',spd:'20次/min',c:'#00aaff'},
+    {id:'R7',role:'隐形②拣选',st:'运行中',spd:'19次/min',c:'#00aaff'},
+    {id:'R8',role:'隐形③拣选',st:'运行中',spd:'20次/min',c:'#00aaff'},
+    {id:'R9',role:'隐形④拣选',st:'运行中',spd:'18次/min',c:'#00aaff'},
+  ];
+  var rW=W/9,rH=155,rY=338;
+  robots.forEach(function(r,i){
+    var rx=i*rW+4;
+    c.fillStyle='#001825';c.fillRect(rx,rY,rW-8,rH);
+    c.strokeStyle='#0a2a3a';c.lineWidth=1;c.strokeRect(rx,rY,rW-8,rH);
+    c.fillStyle=r.c;
+    c.beginPath();c.arc(rx+22,rY+28,10,0,Math.PI*2);c.fill();
+    c.fillStyle='rgba(255,255,255,0.22)';
+    c.beginPath();c.arc(rx+20,rY+26,5,0,Math.PI*2);c.fill();
+    c.fillStyle='#ddeeff';c.font='bold 24px '+F;
+    c.textAlign='left';c.textBaseline='middle';
+    c.fillText(r.id,rx+38,rY+28);
+    c.fillStyle='#3a6a88';c.font='13px '+F;
+    c.textAlign='left';c.textBaseline='top';
+    c.fillText(r.role,rx+8,rY+54);
+    c.fillStyle=r.c;c.font='bold 17px '+F;
+    c.textAlign='center';c.textBaseline='middle';
+    c.fillText(r.st,rx+(rW-8)/2,rY+102);
+    c.fillStyle='#2a5566';c.font='13px '+F;
+    c.textAlign='center';c.textBaseline='bottom';
+    c.fillText(r.spd,rx+(rW-8)/2,rY+rH-6);
+  });
+
+  // 分隔线
+  c.strokeStyle='#06182a';c.lineWidth=3;
+  c.beginPath();c.moveTo(0,502);c.lineTo(W,502);c.stroke();
+
+  // 关键站点状态（9站，y=505→720）
+  c.fillStyle='#010d1a';c.fillRect(0,505,W,220);
+  c.fillStyle='#2a5577';c.font='bold 20px '+F;
+  c.textAlign='left';c.textBaseline='top';
+  c.fillText('▌ 关键站点运行状态  St.100 → St.250',18,512);
+  var stations=[
+    {id:'St.100',name:'自动成箱机',st:'运行',ct:'4.1s',c:'#00ff66'},
+    {id:'St.105',name:'QR码生成',  st:'在线',ct:'1.2s',c:'#00ff66'},
+    {id:'St.106',name:'MES扫码',   st:'在线',ct:'—',   c:'#00ff66'},
+    {id:'St.120',name:'礼品拣选区',st:'运行',ct:'3.8s',c:'#00ff66'},
+    {id:'St.130',name:'护理品拣选',st:'运行',ct:'4.2s',c:'#00ff66'},
+    {id:'St.140',name:'隐形①/②区',st:'运行',ct:'3.5s',c:'#00aaff'},
+    {id:'St.150',name:'隐形③/④区',st:'运行',ct:'3.6s',c:'#00aaff'},
+    {id:'St.210',name:'装箱核验',  st:'运行',ct:'0.8s',c:'#00ff66'},
+    {id:'St.230',name:'自动封箱',  st:'运行',ct:'2.1s',c:'#00ff66'},
+  ];
+  var sW=W/9,sH=110,sY=540;
+  stations.forEach(function(s,i){
+    var sx=i*sW+4;
+    c.fillStyle=s.c==='#00aaff'?'#001828':'#001420';c.fillRect(sx,sY,sW-8,sH);
+    c.strokeStyle=s.c==='#00aaff'?'#004466':'#003322';c.lineWidth=1.2;c.strokeRect(sx,sY,sW-8,sH);
+    c.fillStyle=s.c;c.fillRect(sx,sY,sW-8,5);
+    c.fillStyle='#88bbdd';c.font='bold 17px '+F;
+    c.textAlign='left';c.textBaseline='top';
+    c.fillText(s.id,sx+7,sY+10);
+    c.fillStyle='#3a6a88';c.font='13px '+F;
+    c.fillText(s.name,sx+7,sY+31);
+    c.fillStyle=s.c;c.font='bold 19px '+F;
+    c.textAlign='center';c.textBaseline='middle';
+    c.fillText(s.st,sx+(sW-8)/2,sY+70);
+    c.fillStyle='#2a5566';c.font='12px '+F;
+    c.textAlign='center';c.textBaseline='bottom';
+    c.fillText('CT '+s.ct,sx+(sW-8)/2,sY+sH-6);
+  });
+
+  // 流程进度条（y=728→774）
+  var flY=728;
+  c.fillStyle='#020e1a';c.fillRect(12,flY,W-24,46);
+  c.strokeStyle='#0a2244';c.lineWidth=1;c.strokeRect(12,flY,W-24,46);
+  var flowPct=0.896;
+  c.fillStyle='rgba(0,120,80,0.28)';c.fillRect(12,flY,Math.floor((W-24)*flowPct),46);
+  c.fillStyle='#1a4a6a';c.font='15px '+F;
+  c.textAlign='left';c.textBaseline='middle';
+  c.fillText('流程：成箱 → 扫码→MES → 礼品拣选 → 护理品拣选 → 缓冲传送 → 隐形拣选 → 核验扫描 → 分流/修正 → 封箱 → 贴标 → 标签核验 → 出库',22,flY+23);
+  c.fillStyle='#00ee66';c.font='bold 17px '+F;
+  c.textAlign='right';c.textBaseline='middle';
+  c.fillText('当日进度 89.6%',W-18,flY+23);
+
+  // 底部状态栏
+  c.strokeStyle='#0a2a44';c.lineWidth=2;
+  c.beginPath();c.moveTo(0,H-58);c.lineTo(W,H-58);c.stroke();
+  c.fillStyle='#000d0a';c.fillRect(0,H-57,W,57);
+  c.fillStyle='#22ee55';c.font='bold 22px '+F;
+  c.textAlign='left';c.textBaseline='middle';
+  c.fillText('● 系统正常运行',18,H-28);
+  var subs=['传送带 ● 正常','成箱机 ● 在线','扫码器×12 ● 在线','Delta×9 ● 运行','封箱机 ● 正常','贴标机 ● 正常'];
+  c.fillStyle='#2a6677';c.font='18px '+F;
+  c.textAlign='center';
+  c.fillText(subs.join('    '),W/2,H-28);
+  c.fillStyle='#3a8866';c.font='bold 20px '+F;
+  c.textAlign='right';
+  c.fillText('全线效率 92.4%    刷新 '+timeStr,W-18,H-28);
+
+  var tex=new THREE.CanvasTexture(cvs);
+  _oTex=tex;tex.needsUpdate=true;
+  var geo=new THREE.PlaneGeometry(1,1);
+  var mat=new THREE.MeshBasicMaterial({map:tex,transparent:false});
+  return new THREE.Mesh(geo,mat);
+}
+function _updateOrderAndonClock(){
+  if(!_oCvs||!_oTex)return;
+  _drawAndon(_oCvs);
+  _oTex.needsUpdate=true;
+}
+setInterval(_updateOrderAndonClock,1000);
+
+// 看板尺寸 + 壁挂安装（中间缓冲区北墙，x=6.25, z=-5.44）
+var oAW=4.5,oAH=1.8,oAY=4.15,oAZ=-5.44,oAX=6.25;
+// 外壳
+var oABg=mesh(box(oAW+0.24,oAH+0.24,0.12),LM(0x030810));
+oABg.position.set(oAX,oAY,oAZ-0.07);gAndon.add(oABg);scene.add(oABg);
+// LED发光边框
+var oAFr=mesh(box(oAW+0.08,oAH+0.08,0.08),new THREE.MeshLambertMaterial({
+  color:0x002255,emissive:new THREE.Color(0x001133),emissiveIntensity:0.8}));
+oAFr.position.set(oAX,oAY,oAZ-0.03);gAndon.add(oAFr);scene.add(oAFr);
+// 屏幕底板
+var oAScr=mesh(box(oAW,oAH,0.03),new THREE.MeshLambertMaterial({
+  color:0x000810,emissive:new THREE.Color(0x000610),emissiveIntensity:1}));
+oAScr.position.set(oAX,oAY,oAZ);gAndon.add(oAScr);scene.add(oAScr);
+// Canvas内容面
+var oABoard=mkOrderAndon();oABoard.scale.set(oAW,oAH,1);
+oABoard.position.set(oAX,oAY,oAZ+0.06);gAndon.add(oABoard);scene.add(oABoard);
+// 壁挂吊架（左右各一）
+[oAX-oAW/2+0.25,oAX+oAW/2-0.25].forEach(function(px){
+  var poleH=oAY-oAH/2;
+  var pole=mesh(cyl(0.025,0.025,poleH,8),LM(0x0e1c2a));
+  pole.position.set(px,poleH/2,oAZ+0.04);gAndon.add(pole);scene.add(pole);
+  var brk=mesh(box(0.055,0.040,0.16),LM(0x0e1c2a));
+  brk.position.set(px,oAY-oAH/2+0.020,oAZ+0.08);gAndon.add(brk);scene.add(brk);
+});
+// 三色信号灯（右侧垂直排列，与收货区一致）
+[{dy:0.46,c:0x00ff55,e:0x007722},{dy:0,c:0x332200,e:0x000000},{dy:-0.46,c:0x220000,e:0x000000}].forEach(function(d){
+  var lm=new THREE.MeshLambertMaterial({color:d.c,emissive:new THREE.Color(d.e),emissiveIntensity:1.2});
+  var dot=mesh(sph(0.10,10),lm);dot.position.set(oAX+oAW/2+0.24,oAY+d.dy,oAZ+0.06);gAndon.add(dot);scene.add(dot);
+  var hou=mesh(box(0.16,0.16,0.08),LM(0x080f18));hou.position.set(oAX+oAW/2+0.24,oAY+d.dy,oAZ);gAndon.add(hou);scene.add(hou);
+});
+
+
+
+// ── PROCESS LABELS (north loading aisle) ──
+var procSteps=[
+  {x:-13.5,y:0.5,z:5.2,t:'① ERP→MES指令',c:'#44ccaa'},
+  {x:-10,y:0.5,z:5.2,t:'② 自动选箱成型 St.100',c:'#44ccaa'},
+  {x:-7.5,y:0.5,z:5.2,t:'③ 贴条码/QR码 St.110',c:'#44ccaa'},
+  {x:-4.5,y:0.5,z:5.2,t:'④ 礼品拣选 St.120',c:'#44aaff'},
+  {x:0,y:0.5,z:5.2,t:'⑤ 护理品拣选 St.130',c:'#44aaff'},
+  {x:6,y:0.5,z:5.2,t:'⑥ 传送→隐形眼镜区',c:'#44aaff'}
+];
+procSteps.forEach(function(s){
+  var l=mkLbl(s.t,11,s.c);l.scale.set(2.2,0.48,1);l.position.set(s.x,s.y,s.z);scene.add(l);
+});
+
+// ══════════════════════════════════════════════════════════════
+// ── RIGHT ZONE EXTENSION: 隐形眼镜区 + 人工检验区 + 自动包装区 ──
+// ══════════════════════════════════════════════════════════════
+
+// 扩展地板 (x=17→33, 16单位, 检验区)
+var flrR=mesh(box(16,0.06,11),LM(0x060c18));flrR.position.set(25,-0.03,0);scene.add(flrR);
+var gridR=new THREE.GridHelper(16,16,0x0a1e32,0x060e1a);gridR.position.set(25,0,0);scene.add(gridR);
+
+// 扩展墙体
+var extWM=TLM(0x07172a,0.15);
+var extWN=mesh(box(16,6,0.08),extWM);extWN.position.set(25,3,5.5);scene.add(extWN);
+var extWS=mesh(box(16,6,0.08),extWM);extWS.position.set(25,3,-5.5);scene.add(extWS);
+var extWR=mesh(box(0.08,6,11),extWM);extWR.position.set(33,3,0);scene.add(extWR);
+
+// 扩展天花板梁（每5单位一根）
+for(var rbx=20;rbx<=32;rbx+=5){
+  var rcb=mesh(box(0.15,0.14,11),LM(0x0a1826));rcb.position.set(rbx,4.6,0);scene.add(rcb);
+}
+// 扩展LED灯 fixtures removed (visual only; brightness maintained by scene lights)
+
+// 扩展地面安全线
+[-0.36,0.36].forEach(function(sfz){
+  var sfl=mesh(box(16,0.008,0.09),BM(0x886600));sfl.position.set(25,0.007,sfz);scene.add(sfl);
+});
+
+// 检验区重力滚轮传送带 (x=23→33, 10m)，从St.210核验扫描器位置开始（窄于动力带）
+makeGravityConveyor(10,28,0,0); // x=23 → x=33（重力出料段，St.210扫描器后才开始）
+
+// ── 缓冲过渡区 (x=1.5→11, 非隐形区结束到CL区开始，较长缓冲段，南侧门让位延伸至x=11) ──
+// 黄色边框线
+[[-4.75,0.008,5.5],[4.75,0.008,5.5],[-4.75,0.008,-5.5],[4.75,0.008,-5.5]].forEach(function(d){
+  var bl=mesh(box(0.06,0.008,11.0),BM(0x886600));bl.position.set(6.25+d[0],0.008,0);scene.add(bl);
+});
+
+// 缓冲区内输送带清空，无设备
+
+// ── GRAVITY RACKS Zone 11-18 (隐形眼镜区, 青色) ──
+var gRackCL=G('RACK_CL');
+var gR6=G('ROBOT_R6'),gR7=G('ROBOT_R7'),gR8=G('ROBOT_R8'),gR9=G('ROBOT_R9');
+var gSt140=G('ST140_ZONE'),gSt150=G('ST150_ZONE');
+
+var clRackDefs=[
+  {x:11.0,z:2.0, col:0x2a5080,flip:false},{x:13.0,z:2.0, col:0x2a5080,flip:false},
+  {x:15.0,z:2.0, col:0x2a5080,flip:false},{x:17.0,z:2.0, col:0x2a5080,flip:false},
+  {x:11.0,z:-2.0,col:0x2a5080,flip:true}, {x:13.0,z:-2.0,col:0x2a5080,flip:true},
+  {x:15.0,z:-2.0,col:0x2a5080,flip:true}, {x:17.0,z:-2.0,col:0x2a5080,flip:true}
+];
+clRackDefs.forEach(function(crd,_cri){
+  var RW=2.0,RH=2.2,RD=2.2,N_LAYERS=10,LAYER_H=0.20;
+  var SLOPE=crd.flip?0.055:-0.055;
+  var N_TRK=8,TRACK_W=(RW-0.06)/N_TRK,BOX_D=0.080,BOX_H=0.060;
+  var chx=crd.x,chz=crd.z;
+  var cfz=crd.flip?chz+RD/2:chz-RD/2,cbz=crd.flip?chz-RD/2:chz+RD/2;
+  var cpostM=LM(0x1a3050,0x050e18),cbeamM=LM(0x2a4a6a,0x0a1a28),cshelfM=LM(0x152438),cdivM=LM(0x1e3850);
+  [[chx-RW/2,cfz],[chx+RW/2,cfz],[chx-RW/2,cbz],[chx+RW/2,cbz]].forEach(function(xz){
+    var cp=mesh(cyl(0.028,0.028,RH+0.15,8),cpostM);cp.position.set(xz[0],(RH+0.15)/2,xz[1]);gRackCL.add(cp);scene.add(cp);
+  });
+  for(var cli=0;cli<=N_LAYERS;cli++){
+    var cby=cli*LAYER_H+0.12;
+    var cfb=mesh(box(RW,0.020,0.025),cbeamM);cfb.position.set(chx,cby,cfz);gRackCL.add(cfb);scene.add(cfb);
+    var cbb=mesh(box(RW,0.020,0.025),cbeamM);cbb.position.set(chx,cby,cbz);gRackCL.add(cbb);scene.add(cbb);
+  }
+  var cdLen=Math.sqrt(RD*RD+RH*RH),cdAng=Math.atan2(RH,RD);
+  [chx-RW/2-0.006,chx+RW/2+0.006].forEach(function(cdx){
+    var cd1=mesh(box(0.010,0.010,cdLen),LM(0x1a4a6a));cd1.position.set(cdx,RH/2,chz);cd1.rotation.x=cdAng;gRackCL.add(cd1);scene.add(cd1);
+    var cd2=mesh(box(0.010,0.010,cdLen),LM(0x1a4a6a));cd2.position.set(cdx,RH/2,chz);cd2.rotation.x=-cdAng;gRackCL.add(cd2);scene.add(cd2);
+  });
+  for(var cli2=0;cli2<N_LAYERS;cli2++){
+    var csy=cli2*LAYER_H+0.12+0.010;
+    var csp=mesh(box(RW-0.04,0.010,RD-0.04),cshelfM);csp.position.set(chx,csy,chz);csp.rotation.x=SLOPE;gRackCL.add(csp);scene.add(csp);
+    for(var cti=0;cti<=N_TRK;cti++){
+      var ctx=chx-RW/2+0.03+cti*TRACK_W;
+      var cdv=mesh(box(0.006,0.058,RD-0.06),cdivM);cdv.position.set(ctx,csy+0.032,chz);cdv.rotation.x=SLOPE;gRackCL.add(cdv);scene.add(cdv);
+    }
+    var cyF=csy+0.058+Math.tan(-SLOPE)*RD*0.5;
+    var _claneStart=_LANES.length;
+    for(var cti2=0;cti2<N_TRK;cti2++){
+      var ctx2=chx-RW/2+0.03+(cti2+0.5)*TRACK_W;
+      var _cs=_skus[_clMap[_cri*8+cti2]],cpC=_cs[0];
+      // 隐形眼镜区：x=11(最左/高频)→满，往右(x=13/15/17)渐减，体现高频优先拣选逻辑
+      var _clFill=[25,25,25,25]; // 统一满载，确保俯瞰拣选面视觉一致
+      var cnP=_clFill[_cri%4];
+      var _claneInstIds=[];
+      for(var cpi=0;cpi<cnP;cpi++){
+        var cdOff=0.022+cpi*(BOX_D+0.004);
+        var cpz=crd.flip?cfz-cdOff:cfz+cdOff;
+        var cpyAdj=cdOff*Math.tan(Math.abs(SLOPE));
+        _iM.makeTranslation(ctx2,cyF+BOX_H*0.5+cpyAdj,cpz);
+        _iC.setHex(cpC);_im.setMatrixAt(_iidx,_iM);_im.setColorAt(_iidx,_iC);
+        _claneInstIds.push(_iidx);_iidx++;
+      }
+      _LANES.push({hx:chx,flip:crd.flip,fz:cfz,bz:cbz,layer:cli2,track:cti2,tx:ctx2,
+        frontY:cyF+BOX_H*0.5,tanSlope:Math.tan(Math.abs(SLOPE)),
+        BOX_D:BOX_D,BOX_H:BOX_H,instIds:_claneInstIds,fill:cnP,maxFill:cnP,
+        ledDome:null,ledOn:false,pC:cpC,restocking:false});
+    }
+    var cls=mesh(box(RW-0.04,0.016,0.020),LM(0x080e0c));cls.position.set(chx,csy+0.012,cbz+0.012);gRackCL.add(cls);scene.add(cls);
+    for(var cti3=0;cti3<N_TRK;cti3++){
+      var ctx3=chx-RW/2+0.03+(cti3+0.5)*TRACK_W;
+      var cdom=mesh(cyl(0.009,0.009,0.013,7),new THREE.MeshLambertMaterial({color:0x00aaff,emissive:new THREE.Color(0x005588),emissiveIntensity:0}));
+      cdom.position.set(ctx3,csy+0.022,cbz+0.018);gRackCL.add(cdom);scene.add(cdom);
+      _LANES[_claneStart+cti3].ledDome=cdom;
+    }
+    // ── Lane scan marker per track（隐形区，机器人视觉探头拣选前扫码用）──
+    var _cmFaceZ=crd.flip?(cfz+0.0125):(cfz-0.0125);
+    var _cmFwd=crd.flip?1:-1;
+    var _cmCZ=_cmFaceZ+_cmFwd*(_LMT*0.5+0.001);
+    var _cmCY=cli2*LAYER_H+0.18;
+    for(var _ctiq=0;_ctiq<N_TRK;_ctiq++){
+      var _cmCX=chx-RW/2+0.03+(_ctiq+0.5)*TRACK_W;
+      _lmM.makeTranslation(_cmCX,_cmCY,_cmCZ);_lmBg.setMatrixAt(_lmN,_lmM);
+      _lmM.makeTranslation(_cmCX,_cmCY,_cmCZ+_cmFwd*0.0012);_lmPt.setMatrixAt(_lmN,_lmM);
+      _lmN++;
+    }
+  }
+  var ctopY=N_LAYERS*LAYER_H+0.12;
+  var cband=mesh(box(RW,0.12,RD),LM(crd.col));cband.position.set(chx,ctopY+0.06,chz);gRackCL.add(cband);scene.add(cband);
+});
+
+// Finalize instanced rack products
+_im.count=_iidx;
+_im.instanceMatrix.needsUpdate=true;
+if(_im.instanceColor)_im.instanceColor.needsUpdate=true;
+// Build per-robot lane pools for pick/restock system
+_LANES.forEach(function(ln){
+  if(!_ROBOT_LANE_POOLS[ln.hx])_ROBOT_LANE_POOLS[ln.hx]=[];
+  _ROBOT_LANE_POOLS[ln.hx].push(ln);
+});
+// ── Demo加速：预消耗部分隐形区货道，使补货动画在1分钟内即可出现 ──
+// 35%的CL货道初始库存仅6-8件（略高于补货阈值5），机器人拣1-3次即触发绿灯
+(function(){
+  var _clHx=[11.0,13.0,15.0,17.0];
+  _LANES.forEach(function(ln){
+    if(_clHx.indexOf(ln.hx)<0) return;  // 仅处理隐形区
+    if(Math.random()>=0.35) return;     // 35%概率预消耗
+    var _nf=6+Math.floor(Math.random()*3); // 初始剩余6/7/8件
+    for(var _i=0;_i<ln.maxFill-_nf;_i++){
+      _im.setMatrixAt(ln.instIds[_i],_imHide); // 从前排开始隐藏已"被拣走"的件
+    }
+    ln.fill=_nf;
+  });
+  _im.instanceMatrix.needsUpdate=true;
+})();
+// Finalize lane scan markers (non-CL + CL, 共 1440 个货道)
+_lmBg.count=_lmN;_lmBg.instanceMatrix.needsUpdate=true;
+_lmPt.count=_lmN;_lmPt.instanceMatrix.needsUpdate=true;
+
+// ── DELTA ROBOTS R6-R9 (隐形眼镜区) ──
+var clRobotDefs=[
+  {x:11.0,gp:gR6},{x:13.0,gp:gR7},{x:15.0,gp:gR8},{x:17.0,gp:gR9}
+];
+clRobotDefs.forEach(function(crd2){
+  var rcx=crd2.x,rgp=crd2.gp;
+  // 支撑结构：方管截面钢柱（与非隐形区保持一致，对应PDF机器人支撑结构）
+  var gW=2.0,gD=4.0,gH=5.0;
+  var rpostM=LM(0x1a3a4a,0x050e18);
+  [[-gW/2,-gD/2],[gW/2,-gD/2],[-gW/2,gD/2],[gW/2,gD/2]].forEach(function(xz){
+    var rp=mesh(box(0.065,gH,0.065),rpostM);rp.position.set(rcx+xz[0],gH/2,xz[1]);gGantry.add(rp);scene.add(rp);
+    // 立柱顶部连接板
+    var rcap=mesh(box(0.095,0.030,0.095),LM(0x2a4a60));rcap.position.set(rcx+xz[0],gH+0.015,xz[1]);gGantry.add(rcap);scene.add(rcap);
+  });
+  var rtrM=LM(0x1e4060);
+  [[gW,0.08,0.08,rcx,gH,-gD/2],[gW,0.08,0.08,rcx,gH,gD/2],
+   [0.08,0.08,gD,rcx-gW/2,gH,0],[0.08,0.08,gD,rcx+gW/2,gH,0]].forEach(function(d){
+    var rb=mesh(box(d[0],d[1],d[2]),rtrM);rb.position.set(d[3],d[4],d[5]);gGantry.add(rb);scene.add(rb);
+  });
+  var rby=gH-0.12;
+  var rdome=mesh(cyl(0.38,0.28,0.32,6),LM(0xe8e8e8));rdome.position.set(rcx,rby,0);rgp.add(rdome);scene.add(rdome);
+  var rdcap=mesh(cyl(0.38,0.38,0.04,6),LM(0xcccccc));rdcap.position.set(rcx,rby+0.16,0);rgp.add(rdcap);scene.add(rdcap);
+  for(var rsi=0;rsi<6;rsi++){
+    var rsa=rsi*Math.PI/3;
+    var rsl=mesh(sph(0.016,6),new THREE.MeshLambertMaterial({color:0x00aaff,emissive:new THREE.Color(0x005588),emissiveIntensity:1.2}));
+    rsl.position.set(rcx+Math.sin(rsa)*0.36,rby+0.08,Math.cos(rsa)*0.36);rgp.add(rsl);scene.add(rsl);
+  }
+  for(var rai=0;rai<3;rai++){
+    var rang=rai*(Math.PI*2/3),raR=0.30;
+    var ruax=rcx+Math.sin(rang)*raR,ruaz=Math.cos(rang)*raR;
+    var ruab=mesh(box(0.05,0.06,0.05),LM(0xe0e0e0));ruab.position.set(ruax,rby-0.12,ruaz);rgp.add(ruab);scene.add(ruab);
+    var ruaL=0.55;
+    var rual=mesh(box(0.05,ruaL,0.05),LM(0xe8e8e8));
+    rual.position.set(ruax+Math.sin(rang)*0.04,rby-0.12-ruaL/2,ruaz+Math.cos(rang)*0.04);
+    rual.rotation.x=rai===0?-0.15:0.1;rgp.add(rual);scene.add(rual);
+    var rfaY=rby-0.12-ruaL-0.10,rfaL=0.72;
+    [-0.028,0.028].forEach(function(roff){
+      var rfar=mesh(cyl(0.013,0.013,rfaL,6),LM(0x1a1a1a));
+      rfar.position.set(ruax+Math.sin(rang)*0.06+Math.cos(rang)*roff,rfaY,ruaz+Math.cos(rang)*0.06-Math.sin(rang)*roff);
+      rfar.rotation.x=0.15;rgp.add(rfar);scene.add(rfar);
+    });
+  }
+  // ── 三段式伸缩臂 + 末端执行器 + 摄像机/视觉系统（隐形区，与非隐形区结构一致）──
+  var reeY=gH-0.12-0.55-0.72-0.15;
+  // 腕关节盘
+  var rwrist=mesh(cyl(0.12,0.12,0.04,10),LM(0xb0b8c0));rwrist.position.set(rcx,reeY+0.02,0);gEEF.add(rwrist);scene.add(rwrist);
+  // Z轴直线伺服模组
+  var ract=mesh(box(0.13,0.24,0.09),LM(0xc8d0d8));ract.position.set(rcx,reeY-0.13,0);gEEF.add(ract);scene.add(ract);
+  var rrib=mesh(box(0.015,0.22,0.092),LM(0xa0acb4));rrib.position.set(rcx+0.058,reeY-0.13,0);gEEF.add(rrib);scene.add(rrib);
+  // 三段式伸缩臂（与非隐形区完全一致）
+  // 第一段（外管，0.80m）
+  var rs1top=reeY-0.26,rs1len=0.80;
+  var rsh1=mesh(cyl(0.044,0.044,rs1len,10),LM(0xa8b2bc));rsh1.position.set(rcx,rs1top-rs1len/2,0);gEEF.add(rsh1);scene.add(rsh1);
+  var rs1bot=rs1top-rs1len;
+  // 第二段（中管）：缩进时仅露0.15m，完全伸出时1.30m
+  var rs2len=0.15;
+  var rsh2=mesh(cyl(0.032,0.032,rs2len,10),LM(0xb4bec8));rsh2.position.set(rcx,rs1bot-rs2len/2,0);gEEF.add(rsh2);scene.add(rsh2);
+  var rs2bot=rs1bot-rs2len;
+  // 第三段（内管，最细）：缩进时仅露0.10m，完全伸出时1.00m
+  var rs3len=0.10;
+  var rsh3=mesh(cyl(0.022,0.022,rs3len,10),LM(0xc2ccd4));rsh3.position.set(rcx,rs2bot-rs3len/2,0);gEEF.add(rsh3);scene.add(rsh3);
+  var rs3bot=rs2bot-rs3len;
+  // 末端工具座
+  var rtool=mesh(box(0.095,0.050,0.095),LM(0x283848));rtool.position.set(rcx,rs3bot-0.025,0);gEEF.add(rtool);scene.add(rtool);
+  // 真空吸盘组（4点阵列，存引用供动画使用）
+  var _rcups_arr=[];
+  [[-0.028,-0.028],[0.028,-0.028],[-0.028,0.028],[0.028,0.028]].forEach(function(xzOff){
+    var rcup=mesh(cyl(0.012,0.008,0.022,8),LM(0x1a2030));rcup.position.set(rcx+xzOff[0],rs3bot-0.062,xzOff[1]);gEEF.add(rcup);scene.add(rcup);
+    _rcups_arr.push({m:rcup,ox:xzOff[0],oz:xzOff[1]});
+  });
+  // 摄像机/视觉系统（挂在第一段伸缩臂底端侧面）
+  var rcamY=rs1bot+0.06;
+  var rcamBkt=mesh(box(0.006,0.075,0.006),LM(0x3a4858));rcamBkt.position.set(rcx-0.065,rcamY+0.038,0.028);gEEF.add(rcamBkt);scene.add(rcamBkt);
+  var rcamB=mesh(box(0.050,0.038,0.050),LM(0x0a1825));rcamB.position.set(rcx-0.090,rcamY,0.028);gEEF.add(rcamB);scene.add(rcamB);
+  var rcamL=mesh(cyl(0.013,0.010,0.020,8),LM(0x050a10));rcamL.rotation.x=Math.PI/2;rcamL.position.set(rcx-0.090,rcamY,0.040);gEEF.add(rcamL);scene.add(rcamL);
+  // 存入EEF引用数组（供动画系统使用）
+  _ROBOT_EEFS.push({
+    cx:rcx,cz:0,eeY:reeY,s1bot:rs1bot,s1len:rs1len,s2len:rs2len,s3len:rs3len,
+    wrist:rwrist,actBox:ract,actRib:rrib,
+    sh1:rsh1,sh2:rsh2,sh3:rsh3,
+    toolMnt:rtool,cups:_rcups_arr,
+    camBkt:rcamBkt,camB:rcamB,camL:rcamL,
+    prod:null,ball:null,state:'idle',t:-Math.random()*4.0,
+    tgtX:rcx,tgtZ:0,pickY:0.6,pickExt:0,side:1,prodActive:false,lockedCarton:null,retStartEx:0,
+    picksForCarton:0,picksDone:0,fastMode:false
+  });
+});
+
+// 隐形区安全围栏已合并至上方连续围合安全围栏设计（含北侧安全门）
+
+
+
+// 龙门扫描光效全局引用（由各自IIFE赋值，供_beams动画系统使用）
+var _s210Fan=null,_s210Spot=null;
+var _s250Fan=null,_s250Spot=null;
+
+// ── St.210 装箱内容核验扫描器（x=23，动力带→重力滚轮过渡口，St.220(x=21.5)与St.225(x=24.5)之间，门型架顶扫）──
+var gSt210=G('ST210');
+(function(){
+  var sx=23.0; // 动力带结束/重力带起始处，St.220分流(x=21.5)与St.225回流(x=24.5)之间
+  var postM=LM(0xa0aab8);
+  var beamM=LM(0x8898a8);
+  // ── 门型架：北柱(z=-0.72) + 南柱(z=+0.72) + 顶横梁 ──
+  [-0.72,0.72].forEach(function(pz){
+    // 立柱
+    var post=mesh(box(0.055,1.80,0.055),postM);post.position.set(sx,0.90,pz);gSt210.add(post);scene.add(post);
+    // 底座法兰
+    var base=mesh(box(0.14,0.035,0.14),LM(0x606878));base.position.set(sx,0.018,pz);gSt210.add(base);scene.add(base);
+    // 底座螺栓（4角）
+    [[0.04,0.04],[-0.04,0.04],[0.04,-0.04],[-0.04,-0.04]].forEach(function(b){
+      var bolt=mesh(cyl(0.007,0.007,0.04,6),LM(0x404850));bolt.position.set(sx+b[0],0.022,pz+b[1]);gSt210.add(bolt);scene.add(bolt);
+    });
+    // 立柱顶部横梁连接板
+    var cap=mesh(box(0.090,0.045,0.090),LM(0x7a8898));cap.position.set(sx,1.822,pz);gSt210.add(cap);scene.add(cap);
+  });
+  // 顶横梁
+  var beam=mesh(box(0.055,0.055,1.49),beamM);beam.position.set(sx,1.80,0);gSt210.add(beam);scene.add(beam);
+  // 横梁两端加强肋板
+  [-0.70,0.70].forEach(function(bz){
+    var gus=mesh(box(0.045,0.18,0.030),LM(0x8090a0));gus.position.set(sx,1.71,bz);gSt210.add(gus);scene.add(gus);
+  });
+  // ── 扫描仪主体（朝下，固定在横梁中央下方）──
+  var body=mesh(box(0.20,0.10,0.24),LM(0xd0d8e0));body.position.set(sx,1.67,0);gSt210.add(body);scene.add(body);
+  // 读码窗口（底面朝下）
+  var win=mesh(box(0.14,0.006,0.18),LM(0x060c14));win.position.set(sx,1.615,0);gSt210.add(win);scene.add(win);
+  // 玻璃蓝色反光
+  var glass=mesh(box(0.14,0.003,0.18),new THREE.MeshLambertMaterial({color:0x204060,transparent:true,opacity:0.55}));glass.position.set(sx,1.617,0);gSt210.add(glass);scene.add(glass);
+  // 状态LED（绿色）
+  var led=mesh(sph(0.028,8),new THREE.MeshLambertMaterial({color:0x00ff55,emissive:new THREE.Color(0x00cc44),emissiveIntensity:2.2}));led.position.set(sx+0.11,1.72,0.13);gSt210.add(led);scene.add(led);
+  // 线缆（沿北侧立柱走线）
+  var cab=mesh(cyl(0.010,0.010,1.75,6),LM(0x1a2838));cab.position.set(sx+0.035,0.90,-0.72);gSt210.add(cab);scene.add(cab);
+  // ── 红色激光扫描扇面（锥尖朝下 -Y，底面朝上贴近读码窗）──
+  var cg=new THREE.ConeGeometry(0.38,1.35,4,1);
+  var cm=new THREE.MeshLambertMaterial({color:0xff1800,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false});
+  var fan=new THREE.Mesh(cg,cm);
+  fan.rotation.z=Math.PI; // 锥尖→-Y（向下），底面→+Y（贴近读码窗）
+  fan.position.set(sx,0.945,0); // 锥尖约y=0.27（纸箱内），底面约y=1.62（贴窗口）
+  gSt210.add(fan);scene.add(fan);
+  // 激光落点（传送带上红色矩形扫描区，模拟扫描光迹）
+  var spot=mesh(box(0.56,0.003,0.70),new THREE.MeshLambertMaterial({color:0xff1100,emissive:new THREE.Color(0xff0000),emissiveIntensity:1.6,transparent:true,opacity:0}));spot.position.set(sx,0.175,0);gSt210.add(spot);scene.add(spot);
+  _s210Fan=fan; _s210Spot=spot; // 暴露给扫描光效动画系统
+  // 标签
+  var lbl=mkLbl('St.210 · 装箱内容核验 → 继续封箱 / 推至St.220人工站',12,'#ffcc44');
+  lbl.scale.set(3.6,0.44,1);lbl.position.set(sx,2.12,-0.90);scene.add(lbl);
+})();
+
+// ── St.220 人工取出站 · 重力分流滚轮传送带 (x=25.5, 从主线北边沿z=-0.50紧贴接入→z=-3.75) ──
+var gSt220=G('ST220');
+(function(){
+  var sx=25.5,rLen=3.25,rCZ=-2.125; // 世界z=-0.50→-3.75，紧贴主线北边沿(z=-0.50)
+  var railM=LM(0x8898a8),rolM=LM(0xb0bcc8),legM=LM(0x8090a0);
+  // 两侧侧轨（紧贴主线北边沿开始）
+  [-0.26,0.26].forEach(function(rx){
+    var rail=mesh(box(0.05,0.05,rLen),railM);rail.position.set(sx+rx,0.155,rCZ);gSt220.add(rail);scene.add(rail);
+  });
+  // 滚轮：从z=-0.50开始，间距0.13m
+  var nr=Math.floor(rLen/0.13);
+  for(var dr=0;dr<=nr;dr++){
+    var drl=mesh(cyl(0.022,0.022,0.52,8),rolM);
+    drl.rotation.z=Math.PI/2;drl.position.set(sx,0.18,-0.50-dr*0.13);gSt220.add(drl);scene.add(drl);
+  }
+  // 腿架
+  [-0.85,-2.10,-3.40].forEach(function(lz){
+    [-0.26,0.26].forEach(function(lx){
+      var leg=mesh(cyl(0.018,0.018,0.85,6),legM);leg.position.set(sx+lx,-0.245,lz);gSt220.add(leg);scene.add(leg);
+      var ft=mesh(box(0.07,0.016,0.07),LM(0x607080));ft.position.set(sx+lx,-0.675,lz);gSt220.add(ft);scene.add(ft);
+    });
+    var xb=mesh(box(0.02,0.02,0.52),legM);xb.position.set(sx,-0.36,lz);gSt220.add(xb);scene.add(xb);
+  });
+  // 推箱器（在主线内z=-0.25，推箱至北边沿z=-0.50入轨）
+  var pushArm=mesh(box(0.12,0.08,0.5),LM(0x3a5a70));pushArm.position.set(sx,0.28,-0.25);gSt220.add(pushArm);scene.add(pushArm);
+  var pushLED=mesh(sph(0.05,8),new THREE.MeshLambertMaterial({color:0xffaa00,emissive:new THREE.Color(0x885500),emissiveIntensity:1.5}));
+  pushLED.position.set(sx,0.40,-0.25);gSt220.add(pushLED);scene.add(pushLED);
+})();
+
+// ── 人工修正工位 (离线区北侧, z≈-3.9, x=20.5-25.5，跨越St.225回流和St.220分流两端) ──
+// 3 work stations on the NORTH side (-Z), merged into one long table
+var gManual=G('MANUAL_AREA');
+// One long table body spanning all 3 stations (x=19.8→26.2, 6.4m total)
+var mb=mesh(box(6.4,0.82,0.68),LM(0x1a3040));mb.position.set(23.0,0.41,-3.9);gManual.add(mb);scene.add(mb);
+var mbt=mesh(box(6.4,0.04,0.68),LM(0x2a4a5a));mbt.position.set(23.0,0.84,-3.9);gManual.add(mbt);scene.add(mbt);
+// Per-station accessories: screen, lamp, tray
+[20.5,23.0,25.5].forEach(function(mox){
+  // Screen (facing south toward main line)
+  var mscr=mesh(box(0.40,0.28,0.04),new THREE.MeshLambertMaterial({color:0x001a2e,emissive:new THREE.Color(0x002244),emissiveIntensity:0.6}));
+  mscr.position.set(mox,1.22,-4.16);gManual.add(mscr);scene.add(mscr);
+  // Task lamp
+  var lpole=mesh(cyl(0.012,0.012,0.65,6),LM(0x2a3a48));lpole.position.set(mox,1.16,-4.02);gManual.add(lpole);scene.add(lpole);
+  var lamp=mesh(cyl(0.065,0.065,0.022,8),LM(0xddcc88,0x887730));lamp.position.set(mox,1.50,-4.02);gManual.add(lamp);scene.add(lamp);
+  // Work tray
+  var tray=mesh(box(0.55,0.035,0.40),LM(0x2a3a50));tray.position.set(mox,0.86,-3.68);gManual.add(tray);scene.add(tray);
+});
+
+// ── St.225 回流动力传送带 (x=20.5, 从人工区z=-3.60动力回流至主线北边沿z=-0.55，不与主线重叠) ──
+var gSt225=G('ST225');
+(function(){
+  var sx=20.5,bLen=3.05,bW=0.50,bCZ=-2.075; // 世界z=-3.60→z=-0.55，中心z=-2.075
+  var railM=LM(0x8898a8),beltM=LM(0x1a2838),rolM=LM(0xb0bcc8),legM=LM(0x8090a0);
+  // 两侧侧框
+  [-bW/2,bW/2].forEach(function(rx){
+    var fr=mesh(box(0.05,0.08,bLen),railM);fr.position.set(sx+rx,0.160,bCZ);gSt225.add(fr);scene.add(fr);
+  });
+  // 动力皮带面
+  var belt=mesh(box(bW-0.06,0.014,bLen),beltM);belt.position.set(sx,0.188,bCZ);gSt225.add(belt);scene.add(belt);
+  // 驱动辊（南端 z=-0.55，紧贴主线北边沿外侧）
+  var drv=mesh(cyl(0.042,0.042,bW,8),rolM);drv.rotation.z=Math.PI/2;drv.position.set(sx,0.175,-0.55);gSt225.add(drv);scene.add(drv);
+  // 从动辊（北端 z=-3.60，人工区入口端）
+  var tail=mesh(cyl(0.038,0.038,bW,8),rolM);tail.rotation.z=Math.PI/2;tail.position.set(sx,0.175,-3.60);gSt225.add(tail);scene.add(tail);
+  // 电机单元（南端外侧）
+  var mot=mesh(box(0.14,0.10,0.18),LM(0x2a3a4a));mot.position.set(sx+bW/2+0.10,0.175,-0.67);gSt225.add(mot);scene.add(mot);
+  var motShaft=mesh(cyl(0.030,0.030,0.07,8),LM(0x1a2838));motShaft.rotation.z=Math.PI/2;motShaft.position.set(sx+bW/2+0.15,0.175,-0.67);gSt225.add(motShaft);scene.add(motShaft);
+  var mled=mesh(sph(0.022,6),new THREE.MeshLambertMaterial({color:0x00ff44,emissive:new THREE.Color(0x00aa22),emissiveIntensity:1.8}));mled.position.set(sx+bW/2+0.17,0.240,-0.67);gSt225.add(mled);scene.add(mled);
+  // 腿架（3组）
+  [-3.1,-2.075,-0.90].forEach(function(lz){
+    [-bW/2,bW/2].forEach(function(lx){
+      var leg=mesh(cyl(0.018,0.018,0.85,6),legM);leg.position.set(sx+lx,-0.245,lz);gSt225.add(leg);scene.add(leg);
+      var ft=mesh(box(0.07,0.016,0.07),LM(0x607080));ft.position.set(sx+lx,-0.675,lz);gSt225.add(ft);scene.add(ft);
+    });
+    var xb=mesh(box(0.02,0.02,bW),legM);xb.position.set(sx,-0.36,lz);gSt225.add(xb);scene.add(xb);
+  });
+  // 皮带方向箭头（朝+Z，回主线方向）
+  [-2.9,-1.9,-0.9].forEach(function(az){
+    var arr=mesh(box(0.04,0.016,0.10),LM(0x2a4a5a));arr.position.set(sx,0.196,az);gSt225.add(arr);scene.add(arr);
+    var ah=new THREE.Mesh(new THREE.ConeGeometry(0.025,0.07,4),LM(0x2a4a5a));
+    ah.rotation.x=Math.PI/2;ah.position.set(sx,0.197,az+0.10);gSt225.add(ah);scene.add(ah);
+  });
+})();
+
+
+// ── 电气控制柜组：主电源面板 + 传送带PLC + 安全门控制 (south side, x≈23.5-25.3, z≈+2.85，对齐St.225/St.220区域) ──
+(function buildElecCabinets(){
+  var cabM=LM(0x1a2e3a);
+  var doorM=LM(0x22384a);
+  var ledGM=new THREE.MeshLambertMaterial({color:0x00ff44,emissive:new THREE.Color(0x00aa22),emissiveIntensity:1.2});
+  var ledRM=new THREE.MeshLambertMaterial({color:0xff4400,emissive:new THREE.Color(0xaa1100),emissiveIntensity:1.0});
+  // 电柜组位于围栏南侧外过道（z≈+2.85，围栏外，南壁内侧方向，对齐225回流/220分流区域）
+  // Main power panel (larger, x=23.5)
+  var mp=mesh(box(0.60,1.85,0.38),cabM);mp.position.set(23.5,0.925,2.85);scene.add(mp);
+  var mpDoor=mesh(box(0.56,1.70,0.04),doorM);mpDoor.position.set(23.5,0.90,2.68);scene.add(mpDoor);
+  var mpLabel=mesh(box(0.28,0.10,0.008),LM(0x334455));mpLabel.position.set(23.5,1.62,2.657);scene.add(mpLabel);
+  var mpLed1=mesh(sph(0.032,6),ledGM);mpLed1.position.set(23.68,1.50,2.656);scene.add(mpLed1);
+  var mpLed2=mesh(sph(0.032,6),ledRM);mpLed2.position.set(23.68,1.44,2.656);scene.add(mpLed2);
+  // Main breaker handle
+  var mpBreaker=mesh(box(0.06,0.16,0.04),LM(0x3a5060));mpBreaker.position.set(23.5,1.24,2.657);scene.add(mpBreaker);
+  // Top cable duct
+  var mpDuct=mesh(box(0.62,0.12,0.18),LM(0x10202c));mpDuct.position.set(23.5,1.90,3.01);scene.add(mpDuct);
+
+  // PLC cabinet (narrower, x=24.5)
+  var plc=mesh(box(0.50,1.65,0.38),cabM);plc.position.set(24.5,0.825,2.85);scene.add(plc);
+  var plcDoor=mesh(box(0.46,1.52,0.04),doorM);plcDoor.position.set(24.5,0.81,2.668);scene.add(plcDoor);
+  var plcLabel=mesh(box(0.22,0.08,0.008),LM(0x334455));plcLabel.position.set(24.5,1.48,2.658);scene.add(plcLabel);
+  // PLC indicator strip (horizontal row of small LEDs)
+  for(var pi=0;pi<5;pi++){
+    var pLed=mesh(sph(0.024,6),pi<3?ledGM:ledRM);pLed.position.set(24.3+pi*0.08,1.38,2.658);scene.add(pLed);
+  }
+  // PLC top cable duct
+  var plcDuct=mesh(box(0.52,0.10,0.18),LM(0x10202c));plcDuct.position.set(24.5,1.72,3.01);scene.add(plcDuct);
+
+  // Safety door control box (small, x=25.3)
+  var sdc=mesh(box(0.30,0.50,0.22),cabM);sdc.position.set(25.3,1.35,2.82);scene.add(sdc);
+  var sdcDoor=mesh(box(0.26,0.44,0.04),doorM);sdcDoor.position.set(25.3,1.35,2.698);scene.add(sdcDoor);
+  var sdcLedG=mesh(sph(0.028,6),ledGM);sdcLedG.position.set(25.38,1.46,2.697);scene.add(sdcLedG);
+  var sdcLedR=mesh(sph(0.028,6),ledRM);sdcLedR.position.set(25.38,1.38,2.697);scene.add(sdcLedR);
+  // E-stop mushroom button
+  var estop=mesh(cyl(0.038,0.038,0.055,8),new THREE.MeshLambertMaterial({color:0xdd2200,emissive:new THREE.Color(0x881100),emissiveIntensity:0.6}));
+  estop.position.set(25.22,1.62,2.690);scene.add(estop);
+
+  // Cable tray connecting all three cabinets along south wall
+  var tray=mesh(box(2.2,0.08,0.14),LM(0x0e1c28));tray.position.set(24.4,1.92,2.98);scene.add(tray);
+  // Conduit runs down south wall
+  [23.5,24.5].forEach(function(cx){
+    var cond=mesh(cyl(0.022,0.022,1.9,6),LM(0x1a2c3a));cond.position.set(cx-0.28,0.95,3.04);scene.add(cond);
+  });
+})();
+
+// ── 缓冲区南侧设备群 (x≈5-9, z≈+2.85, 围栏外南侧过道) ──
+// 平面图：HMI + CONVEYOR BOX×2 + PDP + TWO DOOR MAIN
+(function buildBufferSouthEquip(){
+  var cabM=LM(0x1a2e3a);
+  var doorM=LM(0x22384a);
+  var ledGM=new THREE.MeshLambertMaterial({color:0x00ff44,emissive:new THREE.Color(0x00aa22),emissiveIntensity:1.2});
+  var ledRM=new THREE.MeshLambertMaterial({color:0xff4400,emissive:new THREE.Color(0xaa1100),emissiveIntensity:1.0});
+  var CZ=2.85; // 南侧过道 z 坐标
+
+  // ── HMI 操作终端 (x=5.0) ──
+  var hmiPole=mesh(box(0.06,1.20,0.06),LM(0x2a3a4a));hmiPole.position.set(5.0,0.60,CZ-0.10);scene.add(hmiPole);
+  var hmiArm=mesh(box(0.30,0.04,0.04),LM(0x2a3a4a));hmiArm.position.set(5.15,1.22,CZ-0.10);scene.add(hmiArm);
+  var hmiScreen=mesh(box(0.32,0.22,0.04),new THREE.MeshLambertMaterial({color:0x001a2e,emissive:new THREE.Color(0x002244),emissiveIntensity:0.7}));
+  hmiScreen.position.set(5.30,1.22,CZ-0.10);scene.add(hmiScreen);
+  var hmiBase=mesh(box(0.18,0.08,0.22),LM(0x1a2c3a));hmiBase.position.set(5.0,0.04,CZ);scene.add(hmiBase);
+
+  // ── CONVEYOR BOX 1 (x=5.9) ──
+  var cb1=mesh(box(0.42,1.50,0.36),cabM);cb1.position.set(5.9,0.75,CZ);scene.add(cb1);
+  var cb1door=mesh(box(0.38,1.38,0.04),doorM);cb1door.position.set(5.9,0.74,CZ-0.20);scene.add(cb1door);
+  var cb1lbl=mesh(box(0.20,0.07,0.008),LM(0x334455));cb1lbl.position.set(5.9,1.38,CZ-0.202);scene.add(cb1lbl);
+  for(var i=0;i<4;i++){
+    var cl=mesh(sph(0.020,6),i<3?ledGM:ledRM);cl.position.set(5.74+i*0.07,1.28,CZ-0.202);scene.add(cl);
+  }
+  var cb1duct=mesh(box(0.44,0.08,0.16),LM(0x10202c));cb1duct.position.set(5.9,1.58,CZ+0.02);scene.add(cb1duct);
+
+  // ── CONVEYOR BOX 2 (x=6.5) ──
+  var cb2=mesh(box(0.42,1.50,0.36),cabM);cb2.position.set(6.5,0.75,CZ);scene.add(cb2);
+  var cb2door=mesh(box(0.38,1.38,0.04),doorM);cb2door.position.set(6.5,0.74,CZ-0.20);scene.add(cb2door);
+  var cb2lbl=mesh(box(0.20,0.07,0.008),LM(0x334455));cb2lbl.position.set(6.5,1.38,CZ-0.202);scene.add(cb2lbl);
+  for(var j=0;j<4;j++){
+    var cl2=mesh(sph(0.020,6),j<2?ledGM:ledRM);cl2.position.set(6.34+j*0.07,1.28,CZ-0.202);scene.add(cl2);
+  }
+  var cb2duct=mesh(box(0.44,0.08,0.16),LM(0x10202c));cb2duct.position.set(6.5,1.58,CZ+0.02);scene.add(cb2duct);
+  // 两箱之间连接线槽
+  var cbTray=mesh(box(0.64,0.06,0.12),LM(0x0e1c28));cbTray.position.set(6.2,1.58,CZ+0.02);scene.add(cbTray);
+
+  // ── PDP 配电盘（三角警示牌 + 小箱体）(x=7.2) ──
+  var pdpBox=mesh(box(0.38,0.55,0.28),cabM);pdpBox.position.set(7.2,1.10,CZ);scene.add(pdpBox);
+  var pdpDoor=mesh(box(0.34,0.50,0.04),doorM);pdpDoor.position.set(7.2,1.10,CZ-0.16);scene.add(pdpDoor);
+  // 三角警示牌（黄黑）
+  var triG=new THREE.ConeGeometry(0.14,0.22,3,1);
+  var triM=new THREE.MeshLambertMaterial({color:0xddaa00,emissive:new THREE.Color(0x664400),emissiveIntensity:0.6});
+  var tri=new THREE.Mesh(triG,triM);
+  tri.position.set(7.2,1.52,CZ-0.17);scene.add(tri);
+  var triLed=mesh(sph(0.022,6),new THREE.MeshLambertMaterial({color:0xffcc00,emissive:new THREE.Color(0xaa8800),emissiveIntensity:1.4}));
+  triLed.position.set(7.20,1.74,CZ-0.17);scene.add(triLed);
+  var pdpPole=mesh(cyl(0.025,0.025,1.08,6),LM(0x2a3a4a));pdpPole.position.set(7.2,0.54,CZ-0.06);scene.add(pdpPole);
+
+  // ── TWO DOOR MAIN 主电柜（双开门, x=8.3, 宽1.4m）──
+  var tdmW=1.40,tdmH=1.90,tdmD=0.50;
+  var tdm=mesh(box(tdmW,tdmH,tdmD),cabM);tdm.position.set(8.3,tdmH/2,CZ+tdmD/2-0.25);scene.add(tdm);
+  // 双门面板（两扇，各0.66m宽）
+  var tdmDoorL=mesh(box(0.66,tdmH-0.10,0.04),doorM);tdmDoorL.position.set(8.3-0.36,tdmH/2,CZ-0.26);scene.add(tdmDoorL);
+  var tdmDoorR=mesh(box(0.66,tdmH-0.10,0.04),doorM);tdmDoorR.position.set(8.3+0.36,tdmH/2,CZ-0.26);scene.add(tdmDoorR);
+  // 门缝中线
+  var tdmSplit=mesh(box(0.008,tdmH-0.10,0.042),LM(0x0a1420));tdmSplit.position.set(8.3,tdmH/2,CZ-0.260);scene.add(tdmSplit);
+  // 左门把手
+  var hL=mesh(box(0.04,0.14,0.03),LM(0x446688));hL.position.set(8.3-0.05,tdmH/2,CZ-0.285);scene.add(hL);
+  // 右门把手
+  var hR=mesh(box(0.04,0.14,0.03),LM(0x446688));hR.position.set(8.3+0.05,tdmH/2,CZ-0.285);scene.add(hR);
+  // 顶部线槽
+  var tdmDuct=mesh(box(tdmW+0.04,0.10,0.20),LM(0x10202c));tdmDuct.position.set(8.3,tdmH+0.05,CZ+0.10);scene.add(tdmDuct);
+  // 状态指示灯（顶部一排）
+  var tdmColors=[ledGM,ledGM,ledRM,ledGM,ledRM];
+  tdmColors.forEach(function(lm,li){
+    var tl=mesh(sph(0.028,6),lm);tl.position.set(8.3-0.48+li*0.24,tdmH-0.12,CZ-0.262);scene.add(tl);
+  });
+  // E-stop
+  var estop=mesh(cyl(0.040,0.040,0.055,8),new THREE.MeshLambertMaterial({color:0xdd2200,emissive:new THREE.Color(0x881100),emissiveIntensity:0.6}));
+  estop.position.set(8.3+0.58,1.55,CZ-0.258);scene.add(estop);
+  // 柜体之间连通线槽
+  var groupTray=mesh(box(3.60,0.07,0.13),LM(0x0e1c28));groupTray.position.set(6.9,1.60,CZ+0.08);scene.add(groupTray);
+})();
+
+// ── St.230/240 机器人部件全局引用（供动画系统使用）──
+var _s230Head=null; // 封箱机上压头
+var _s240Head=null; // 贴标头
+
+// ── St.230 自动封箱机 (x=27, I型门架式：纸箱穿过机器被上下胶带自动封口) ──
+var gSt230=G('ST230');
+(function(){
+  var sx=27.0;
+  var frmM=LM(0xc8d0d8); // 工业白/浅灰
+  var headM=LM(0xb0b8c0);
+  // 4根立柱（前后各2，跨越传送带南北）
+  [[sx-0.55,-0.50],[sx-0.55,0.50],[sx+0.55,-0.50],[sx+0.55,0.50]].forEach(function(xz){
+    var p=mesh(box(0.055,1.85,0.055),frmM);p.position.set(xz[0],0.925,xz[1]);gSt230.add(p);scene.add(p);
+  });
+  // 顶横梁（南北，2根）
+  [-0.55,0.55].forEach(function(dx){
+    var tb=mesh(box(0.050,0.050,1.06),frmM);tb.position.set(sx+dx,1.85,0);gSt230.add(tb);scene.add(tb);
+  });
+  // 顶纵梁（东西，2根）
+  [-0.48,0.48].forEach(function(dz){
+    var lb=mesh(box(1.16,0.050,0.050),frmM);lb.position.set(sx,1.85,dz);gSt230.add(lb);scene.add(lb);
+  });
+  // 底纵梁（东西，2根）
+  [-0.42,0.42].forEach(function(dz){
+    var bb=mesh(box(1.16,0.035,0.035),frmM);bb.position.set(sx,0.06,dz);gSt230.add(bb);scene.add(bb);
+  });
+  // ── 上封头（纸箱顶部封口机构）──
+  var topHead=mesh(box(0.88,0.14,0.28),headM);topHead.position.set(sx,1.62,0);gSt230.add(topHead);scene.add(topHead);
+  _s230Head=topHead; // 暴露给动画系统
+  // 上封头滑轨
+  [-0.13,0.13].forEach(function(dz){
+    var rl=mesh(box(0.88,0.030,0.018),LM(0x909098));rl.position.set(sx,1.54,dz);gSt230.add(rl);scene.add(rl);
+  });
+  // 上胶带卷（两端，黄色）
+  [-0.36,0.36].forEach(function(dx){
+    var tr=mesh(cyl(0.060,0.060,0.075,12),LM(0xddcc00));tr.rotation.z=Math.PI/2;tr.position.set(sx+dx,1.64,0);gSt230.add(tr);scene.add(tr);
+  });
+  // 上封胶带带面
+  var topTape=mesh(box(0.74,0.006,0.042),new THREE.MeshLambertMaterial({color:0xddcc00,emissive:new THREE.Color(0x443300),emissiveIntensity:0.6}));
+  topTape.position.set(sx,1.548,0);gSt230.add(topTape);scene.add(topTape);
+  // ── 下封头（纸箱底部封口机构）──
+  var botHead=mesh(box(0.88,0.10,0.22),headM);botHead.position.set(sx,0.14,0);gSt230.add(botHead);scene.add(botHead);
+  [-0.30,0.30].forEach(function(dx){
+    var br=mesh(cyl(0.048,0.048,0.075,12),LM(0xddcc00));br.rotation.z=Math.PI/2;br.position.set(sx+dx,0.14,0);gSt230.add(br);scene.add(br);
+  });
+  var botTape=mesh(box(0.62,0.006,0.036),new THREE.MeshLambertMaterial({color:0xddcc00,emissive:new THREE.Color(0x443300),emissiveIntensity:0.6}));
+  botTape.position.set(sx,0.188,0);gSt230.add(botTape);scene.add(botTape);
+  // ── 侧导板（引导纸箱居中进入封头）──
+  [-0.44,0.44].forEach(function(dz){
+    var gd=mesh(box(1.20,0.38,0.022),LM(0xb8c2cc,0x283848));gd.position.set(sx,0.65,dz);gSt230.add(gd);scene.add(gd);
+  });
+  // ── 电控箱 ──
+  var ctrl=mesh(box(0.26,0.34,0.18),LM(0x1a2e3a));ctrl.position.set(sx+0.60,0.82,0.52);gSt230.add(ctrl);scene.add(ctrl);
+  var ctrlDoor=mesh(box(0.22,0.30,0.038),LM(0x22384a));ctrlDoor.position.set(sx+0.60,0.82,0.38);gSt230.add(ctrlDoor);scene.add(ctrlDoor);
+  var led=mesh(sph(0.038,8),new THREE.MeshLambertMaterial({color:0x00ff44,emissive:new THREE.Color(0x00aa22),emissiveIntensity:1.8}));
+  led.position.set(sx+0.60,1.06,0.40);gSt230.add(led);scene.add(led);
+})();
+
+// ── St.240 自动贴面单机 (x=30, 侧置机体+悬臂头贴向纸箱顶面) ──
+var gSt240=G('ST240');
+(function(){
+  var sx=30.0;
+  var bodyM=LM(0xc8d0d8); // 白色机身
+  // 主柱（南侧 z=+0.82）
+  var mpost=mesh(box(0.085,1.65,0.085),bodyM);mpost.position.set(sx,0.825,0.82);gSt240.add(mpost);scene.add(mpost);
+  // 底座法兰
+  var base=mesh(box(0.48,0.065,0.48),bodyM);base.position.set(sx,0.033,0.82);gSt240.add(base);scene.add(base);
+  // 机体箱（打印引擎+标签卷仓）
+  var bodyBox=mesh(box(0.38,0.52,0.36),bodyM);bodyBox.position.set(sx,1.08,0.92);gSt240.add(bodyBox);scene.add(bodyBox);
+  var bodyFront=mesh(box(0.34,0.46,0.035),LM(0xb0b8c2));bodyFront.position.set(sx,1.08,0.72);gSt240.add(bodyFront);scene.add(bodyFront);
+  // 标签卷（暖白色）
+  var roll=mesh(cyl(0.095,0.095,0.20,12),LM(0xf0e8d0));roll.rotation.z=Math.PI/2;roll.position.set(sx-0.16,1.18,1.02);gSt240.add(roll);scene.add(roll);
+  var rollCore=mesh(cyl(0.030,0.030,0.22,8),LM(0xd0c8a8));rollCore.rotation.z=Math.PI/2;rollCore.position.set(sx-0.16,1.18,1.02);gSt240.add(rollCore);scene.add(rollCore);
+  // 悬臂（从机体水平伸向传送带中心，z=+0.82→z≈0）
+  var arm=mesh(box(0.055,0.055,0.88),bodyM);arm.position.set(sx,1.46,0.36);gSt240.add(arm);scene.add(arm);
+  // 打印贴标头（悬臂末端，位于传送带上方）
+  var head=mesh(box(0.22,0.16,0.18),LM(0xb0b8c0));head.position.set(sx,1.40,-0.07);gSt240.add(head);scene.add(head);
+  _s240Head=head; // 暴露给动画系统
+  // 出标口（朝下）
+  var outlet=mesh(box(0.16,0.018,0.12),LM(0x181e28));outlet.position.set(sx,1.31,-0.07);gSt240.add(outlet);scene.add(outlet);
+  // 标签导带（从卷到打印头）
+  var strip=mesh(box(0.018,0.006,0.82),LM(0xf0e8d0));strip.position.set(sx,1.45,0.35);gSt240.add(strip);scene.add(strip);
+  // 状态LED
+  var led=mesh(sph(0.032,8),new THREE.MeshLambertMaterial({color:0x00ff44,emissive:new THREE.Color(0x00aa22),emissiveIntensity:1.8}));
+  led.position.set(sx+0.20,1.58,0.90);gSt240.add(led);scene.add(led);
+  // 电缆
+  var cab=mesh(cyl(0.011,0.011,1.60,6),LM(0x1a2838));cab.position.set(sx+0.06,0.825,0.86);gSt240.add(cab);scene.add(cab);
+})();
+// ── St.250 发货标签核验扫描器 (x=32, 龙门架+顶部向下扫描，与St.210同款) ──
+var gSt250=G('ST250');
+(function(){
+  var sx=32.0;
+  var postM=LM(0xa0aab8);
+  var beamM=LM(0x8898a8);
+  // ── 门型架：北柱(z=-0.72) + 南柱(z=+0.72) + 顶横梁 ──
+  [-0.72,0.72].forEach(function(pz){
+    var post=mesh(box(0.055,1.80,0.055),postM);post.position.set(sx,0.90,pz);gSt250.add(post);scene.add(post);
+    var base=mesh(box(0.14,0.035,0.14),LM(0x606878));base.position.set(sx,0.018,pz);gSt250.add(base);scene.add(base);
+    [[0.04,0.04],[-0.04,0.04],[0.04,-0.04],[-0.04,-0.04]].forEach(function(b){
+      var bolt=mesh(cyl(0.007,0.007,0.04,6),LM(0x404850));bolt.position.set(sx+b[0],0.022,pz+b[1]);gSt250.add(bolt);scene.add(bolt);
+    });
+    var cap=mesh(box(0.090,0.045,0.090),LM(0x7a8898));cap.position.set(sx,1.822,pz);gSt250.add(cap);scene.add(cap);
+  });
+  // 顶横梁
+  var beam=mesh(box(0.055,0.055,1.49),beamM);beam.position.set(sx,1.80,0);gSt250.add(beam);scene.add(beam);
+  [-0.70,0.70].forEach(function(bz){
+    var gus=mesh(box(0.045,0.18,0.030),LM(0x8090a0));gus.position.set(sx,1.71,bz);gSt250.add(gus);scene.add(gus);
+  });
+  // ── 扫描仪主体（朝下，固定在横梁中央下方）──
+  var body=mesh(box(0.20,0.10,0.24),LM(0xd0d8e0));body.position.set(sx,1.67,0);gSt250.add(body);scene.add(body);
+  var win=mesh(box(0.14,0.006,0.18),LM(0x060c14));win.position.set(sx,1.615,0);gSt250.add(win);scene.add(win);
+  var glass=mesh(box(0.14,0.003,0.18),new THREE.MeshLambertMaterial({color:0x204060,transparent:true,opacity:0.55}));glass.position.set(sx,1.617,0);gSt250.add(glass);scene.add(glass);
+  var led=mesh(sph(0.028,8),new THREE.MeshLambertMaterial({color:0x00ff55,emissive:new THREE.Color(0x00cc44),emissiveIntensity:2.2}));led.position.set(sx+0.11,1.72,0.13);gSt250.add(led);scene.add(led);
+  var cab=mesh(cyl(0.010,0.010,1.75,6),LM(0x1a2838));cab.position.set(sx+0.035,0.90,-0.72);gSt250.add(cab);scene.add(cab);
+  // ── 红色激光扫描扇面（锥尖朝下-Y）──
+  var cg=new THREE.ConeGeometry(0.38,1.35,4,1);
+  var cm=new THREE.MeshLambertMaterial({color:0xff1800,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false});
+  var fan=new THREE.Mesh(cg,cm);
+  fan.rotation.z=Math.PI;fan.position.set(sx,0.945,0);gSt250.add(fan);scene.add(fan);
+  // 激光落点
+  var spot=mesh(box(0.56,0.003,0.70),new THREE.MeshLambertMaterial({color:0xff1100,emissive:new THREE.Color(0xff0000),emissiveIntensity:1.6,transparent:true,opacity:0}));spot.position.set(sx,0.175,0);gSt250.add(spot);scene.add(spot);
+  _s250Fan=fan; _s250Spot=spot; // 暴露给扫描光效动画系统
+  // 标签
+  var lbl=mkLbl('St.250 · 发货标签核验',12,'#ffcc44');
+  lbl.scale.set(2.8,0.44,1);lbl.position.set(sx,2.12,-0.90);scene.add(lbl);
+})();
+
+
+// ─────────────────────────────────────────────────────────────
+// EQUIPMENT INFO — 弹出标签数据（与入库收货区格式完全一致）
+// ─────────────────────────────────────────────────────────────
+var EINFO={
+  'ST100':      {txt:'St.100  ·  自动成箱机\n11种规格自动成型出箱', x:-18.0, y:2.2, z:0},
+  'CARTON_MAG': {txt:'平板纸箱料仓  ·  11种规格\n自动补料·单规格容量≤200张', x:-18.0, y:2.0, z:0},
+  'ST105':      {txt:'St.105  ·  成箱二维码生成器\n订单信息QR码打印·每箱唯一', x:-16.0, y:1.8, z:-0.56},
+  'ST106':      {txt:'St.106  ·  订单信息扫码 → MES\n拣选区入口·路由确认', x:8.0, y:1.8, z:-0.46},
+  'SCAN_PRE':   {txt:'入库扫码  ·  非隐形区入口前\n来料核验·SKU确认', x:-11.0, y:1.8, z:-0.46},
+  'CONVEYOR':   {txt:'主动力传送带  ·  全线50m\n速度0.55m/s · 节拍3.5s/箱', x:7.25, y:1.4, z:0},
+  'CONV_RAIL':  {txt:'传送带侧导轨\n纸箱横向限位·防偏导向', x:7.25, y:1.4, z:0},
+  'SCANNERS':   {txt:'条码扫描器  ·  12处\n全线SKU核验·订单追踪', x:2.75, y:1.8, z:-0.96},
+  'CARTONS':    {txt:'在线流转纸箱\n已拣 / 拣选中 / 回流修正', x:7.25, y:1.6, z:0},
+  'GANTRY':     {txt:'龙门架  ·  5组\nDelta机器人安装基座·跨度2.0m', x:-3.5, y:6.5, z:0},
+  'ROBOT_R1':   {txt:'R1  ·  Delta机器人  ·  礼品区\nZ1–Z2 礼品盒拣选', x:-7.5, y:6.2, z:0},
+  'ROBOT_R2':   {txt:'R2  ·  Delta机器人  ·  礼品续\nZ3–Z4 礼品盒拣选', x:-5.5, y:6.2, z:0},
+  'ROBOT_R3':   {txt:'R3  ·  Delta机器人  ·  护理液\nZ7–Z8 护理液拣选', x:-3.5, y:6.2, z:0},
+  'ROBOT_R4':   {txt:'R4  ·  Delta机器人  ·  护眼液\nZ5–Z6 护眼液拣选', x:-1.5, y:6.2, z:0},
+  'ROBOT_R5':   {txt:'R5  ·  Delta机器人  ·  伴侣盒\nZ9–Z10 伴侣盒拣选', x:0.5, y:6.2, z:0},
+  'EEF':        {txt:'末端执行器 + 视觉系统\n多SKU抓取·视觉定位·柔性吸盘', x:-3.5, y:2.6, z:0},
+  'SAFETY_FENCE':{txt:'安全围栏  ·  全线两区\n非CL区 x=-13→+2  /  CL区 x=10→19', x:-3.5, y:2.6, z:0},
+  'GANTRY_CL':  {txt:'隐形区龙门架  ·  4组\nR6–R9 Delta机器人安装基座·x=10→18', x:14.0, y:6.5, z:0},
+  'ELEC_CTRL':  {txt:'封装区电气控制柜组\n主电源面板 · PLC控制柜 · 安全门控制箱', x:24.4, y:2.8, z:2.87},
+  'ELEC_BUFFER':{txt:'缓冲区南侧控制中心\nHMI操作终端 · 传送带控制箱×2 · 配电盘 · 主电柜', x:7.0, y:2.8, z:2.87},
+  'RACK_GIFT':  {txt:'Z1–Z4  ·  礼品区货架\n重力滚轮货架·自动补货', x:-6.5, y:3.8, z:0},
+  'RACK_EYE':   {txt:'Z5–Z6  ·  护眼液货架\n重力滚轮货架·自动补货', x:-3.5, y:3.8, z:0},
+  'RACK_CARE':  {txt:'Z7–Z8  ·  护理液货架\n重力滚轮货架·自动补货', x:-1.5, y:3.8, z:0},
+  'RACK_COMP':  {txt:'Z9–Z10  ·  伴侣盒货架\n重力滚轮货架·自动补货', x:0.5, y:3.8, z:0},
+  'ANDON':      {txt:'Andon 看板  ·  MES实时监控\n生产状态·设备状态·拣选进度', x:6.25, y:5.6, z:-5.44},
+  'RACK_CL':    {txt:'Z11–Z18  ·  隐形眼镜货架\n隐形区专区·R6–R9负责拣选', x:14.0, y:3.8, z:0},
+  'ROBOT_R6':   {txt:'R6  ·  Delta机器人  ·  隐形眼镜\nZ11–Z12 隐形眼镜拣选', x:11.0, y:6.2, z:0},
+  'ROBOT_R7':   {txt:'R7  ·  Delta机器人  ·  隐形眼镜\nZ13–Z14 隐形眼镜拣选', x:13.0, y:6.2, z:0},
+  'ROBOT_R8':   {txt:'R8  ·  Delta机器人  ·  隐形眼镜\nZ15–Z16 隐形眼镜拣选', x:15.0, y:6.2, z:0},
+  'ROBOT_R9':   {txt:'R9  ·  Delta机器人  ·  隐形眼镜\nZ17–Z18 隐形眼镜拣选', x:17.0, y:6.2, z:0},
+  'ST210':      {txt:'St.210  ·  装箱内容核验扫描器\n门型架顶扫·缺货分流至St.220人工站', x:23.0, y:2.6, z:0},
+  'ST220':      {txt:'St.220  ·  重力分流传送带\n推箱器将箱推至人工修正站', x:25.5, y:1.8, z:-2.13},
+  'MANUAL_AREA':{txt:'人工修正工位  ·  3台\n缺件手动补货·修正后经St.225回流', x:23.0, y:2.6, z:-3.9},
+  'ST225':      {txt:'St.225  ·  回流动力传送带\n修正完成箱回流主线·并入继续封装', x:20.5, y:1.8, z:-2.08},
+  'ST230':      {txt:'St.230  ·  自动封箱机\n压头压合·上下胶带密封', x:27.0, y:2.6, z:0},
+  'ST240':      {txt:'St.240  ·  自动贴标机\n地址标签 + 单号 + QR码', x:30.0, y:2.5, z:0.44},
+  'ST250':      {txt:'St.250  ·  发货标签核验\n出库前最终核验·确认发货信息', x:32.0, y:2.6, z:0},
+};
+
+function _rr(ctx,x,y,w,h,r){
+  if(ctx.roundRect){ctx.roundRect(x,y,w,h,r);return;}
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r);ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h);ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r);ctx.arcTo(x,y,x+r,y,r);ctx.closePath();
+}
+
+function showPopLabel(info){
+  var cvs=_popCvs, ctx=cvs.getContext('2d');
+  ctx.clearRect(0,0,cvs.width,cvs.height);
+  var F='"PingFang SC","Microsoft YaHei",Arial,sans-serif';
+  ctx.fillStyle='rgba(0,0,15,0.88)';
+  ctx.beginPath(); _rr(ctx,6,6,cvs.width-12,cvs.height-12,14); ctx.fill();
+  ctx.strokeStyle='#ff55aa'; ctx.lineWidth=4;
+  ctx.beginPath(); _rr(ctx,6,6,cvs.width-12,cvs.height-12,14); ctx.stroke();
+  var lines=info.txt.split('\n');
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  if(lines.length===1){
+    ctx.fillStyle='#ffffff'; ctx.font='bold 52px '+F;
+    ctx.fillText(lines[0], cvs.width/2, cvs.height/2);
+  } else {
+    ctx.fillStyle='#ffffff'; ctx.font='bold 52px '+F;
+    ctx.fillText(lines[0], cvs.width/2, cvs.height*0.36);
+    ctx.fillStyle='#aaddff'; ctx.font='32px '+F;
+    ctx.fillText(lines[1], cvs.width/2, cvs.height*0.72);
+  }
+  _popTex.needsUpdate=true;
+  _popSp.position.set(info.x, info.y, info.z);
+  _popSp.scale.set(3.8, 0.76, 1);
+  _popSp.visible=true;
+}
+
+// ─────────────────────────────────────────────────────────────
+// EQUIPMENT HIGHLIGHT OVERLAYS (EOVL — 与入库收货区完全一致)
+// ─────────────────────────────────────────────────────────────
+(function buildOverlays(){
+  var pFill=new THREE.MeshLambertMaterial({color:0xff69b4,transparent:true,opacity:0.28,depthWrite:false,depthTest:true});
+  var pEdge=new THREE.LineBasicMaterial({color:0xff2288,linewidth:2});
+  function addOvl(key,cx,cy,cz,sw,sh,sd){
+    var geo=new THREE.BoxGeometry(sw,sh,sd);
+    var fm=new THREE.Mesh(geo,pFill.clone()); fm.position.set(cx,cy,cz); fm.visible=false; scene.add(fm);
+    var em=new THREE.LineSegments(new THREE.EdgesGeometry(geo),pEdge.clone()); em.position.set(cx,cy,cz); em.visible=false; scene.add(em);
+    EOVL[key]=[fm,em];
+  }
+  // 自动成箱系统
+  addOvl('ST100',    -18.0, 0.70,  0.0,  1.60, 1.44, 0.95);
+  addOvl('CARTON_MAG',-18.0,0.50,  0.0,  1.60, 1.00, 2.20);
+  addOvl('ST105',    -16.0, 0.40, -0.56, 0.36, 0.72, 0.48);
+  addOvl('ST106',      8.0, 0.35, -0.46, 0.32, 0.56, 0.52);
+  addOvl('SCAN_PRE', -11.0, 0.35, -0.46, 0.32, 0.56, 0.52);
+  // 主传送系统
+  addOvl('CONVEYOR',  7.25, 0.12,  0.0, 31.50, 0.24, 1.04);
+  addOvl('CONV_RAIL', 7.25, 0.20,  0.0, 31.50, 0.42, 1.12);
+  addOvl('SCANNERS',  2.75, 0.38, -0.96,25.50, 0.36, 0.22);
+  addOvl('CARTONS',   7.25, 0.26,  0.0, 31.50, 0.30, 0.80);
+  // Delta机器人区（龙门架宽2.0m，高5.0m，5台）
+  addOvl('GANTRY',   -3.50, 2.52,  0.0,  9.20, 5.05, 0.22);
+  addOvl('ROBOT_R1', -7.50, 2.52,  0.0,  1.10, 5.05, 1.10);
+  addOvl('ROBOT_R2', -5.50, 2.52,  0.0,  1.10, 5.05, 1.10);
+  addOvl('ROBOT_R3', -3.50, 2.52,  0.0,  1.10, 5.05, 1.10);
+  addOvl('ROBOT_R4', -1.50, 2.52,  0.0,  1.10, 5.05, 1.10);
+  addOvl('ROBOT_R5',  0.50, 2.52,  0.0,  1.10, 5.05, 1.10);
+  addOvl('EEF',      -3.50, 1.50,  0.0,  9.20, 1.10, 1.20);
+  addOvl('SAFETY_FENCE',-5.50,0.62, 0.0,15.20, 1.28, 4.44); // 非CL区: x=-13→+2
+  // 重力货架（两侧对称，z=±2.0，RW=2.0 RH=2.2 RD=2.2）
+  addOvl('RACK_GIFT', -6.50, 1.16, 0.0,  4.20, 2.36, 4.50);
+  addOvl('RACK_EYE',  -3.50, 1.16, 0.0,  2.20, 2.36, 4.50);
+  addOvl('RACK_CARE', -1.50, 1.16, 0.0,  2.20, 2.36, 4.50);
+  addOvl('RACK_COMP',  0.50, 1.16, 0.0,  2.20, 2.36, 4.50);
+  // Andon看板（x=6.25, y=4.15, z=-5.44, w=4.5, h=1.8）
+  addOvl('ANDON',     6.25, 4.15, -5.44, 4.76, 2.06, 0.22);
+  // 隐形眼镜区（Z11-Z18, 4台CL机器人）
+  addOvl('RACK_CL',  14.00, 1.16,  0.0,  8.20, 2.36, 4.50);
+  addOvl('ROBOT_R6', 11.00, 2.52,  0.0,  1.10, 5.05, 1.10);
+  addOvl('ROBOT_R7', 13.00, 2.52,  0.0,  1.10, 5.05, 1.10);
+  addOvl('ROBOT_R8', 15.00, 2.52,  0.0,  1.10, 5.05, 1.10);
+  addOvl('ROBOT_R9', 17.00, 2.52,  0.0,  1.10, 5.05, 1.10);
+  // 检验/修正/封装区
+  addOvl('ST210',    23.00, 0.96,  0.0,  0.40, 1.92, 1.54);
+  addOvl('ST220',    25.50, 0.17, -2.13, 0.66, 0.38, 3.30);
+  addOvl('MANUAL_AREA',23.0,0.62, -3.90, 6.60, 1.32, 0.82);
+  addOvl('ST225',    20.50, 0.17, -2.08, 0.62, 0.36, 3.10);
+  addOvl('ST230',    27.00, 0.96,  0.0,  1.24, 1.94, 1.10);
+  addOvl('ST240',    30.00, 0.84,  0.44, 0.55, 1.72, 1.06);
+  addOvl('ST250',    32.00, 0.96,  0.0,  0.40, 1.92, 1.54);
+})();
+
+// ── 补充高亮：CL围栏 + CL龙门架 + 电气控制柜 ──
+(function(){
+  var pFill=new THREE.MeshLambertMaterial({color:0xff69b4,transparent:true,opacity:0.28,depthWrite:false,depthTest:true});
+  var pEdge=new THREE.LineBasicMaterial({color:0xff2288,linewidth:2});
+  function mkOvl(cx,cy,cz,sw,sh,sd){
+    var geo=new THREE.BoxGeometry(sw,sh,sd);
+    var fm=new THREE.Mesh(geo,pFill.clone()); fm.position.set(cx,cy,cz); fm.visible=false; scene.add(fm);
+    var em=new THREE.LineSegments(new THREE.EdgesGeometry(geo),pEdge.clone()); em.position.set(cx,cy,cz); em.visible=false; scene.add(em);
+    return [fm,em];
+  }
+  // 安全围栏CL区（x=10→19）—— 追加到已有SAFETY_FENCE数组
+  var clFence=mkOvl(14.5,0.62,0, 9.20,1.28,4.44);
+  EOVL['SAFETY_FENCE'].push(clFence[0],clFence[1]);
+
+  // 隐形区龙门架 GANTRY_CL（x=10→18，立柱z=±2）
+  var clG=mkOvl(14.0,2.52,0, 8.20,5.05,4.20);
+  EOVL['GANTRY_CL']=[clG[0],clG[1]];
+
+  // 封装区电气控制柜组 ELEC_CTRL（主电源+PLC+安全门控，x≈23.5-25.3, z≈+2.85）
+  var ec=mkOvl(24.4,1.00,2.87, 2.50,2.00,0.60);
+  EOVL['ELEC_CTRL']=[ec[0],ec[1]];
+
+  // 缓冲区南侧设备群 ELEC_BUFFER（HMI+传送带控制箱+配电盘+主电柜，x≈5-9, z≈+2.85）
+  var eb=mkOvl(7.0,1.00,2.87, 4.60,2.00,0.62);
+  EOVL['ELEC_BUFFER']=[eb[0],eb[1]];
+})();
+
+function hlEquip(btn,key){
+  Object.keys(EOVL).forEach(function(k){EOVL[k].forEach(function(o){o.visible=false;});});
+  _popSp.visible=false;
+  if(_activeBtn) _activeBtn.classList.remove('active');
+  if(_activeBtn===btn){_activeBtn=null;return;}
+  _activeBtn=btn; btn.classList.add('active');
+  if(EOVL[key]) EOVL[key].forEach(function(o){o.visible=true;});
+  if(EINFO[key]) showPopLabel(EINFO[key]);
+}
+
+// ── BARCODE SCANNERS · 12处 (gScanners) ──
+// 安装在北侧货架(z=-2.0) pick面柱子上，窗口朝+z方向（朝传送带）
+// 高度对准纸箱侧面QR码位置（传送带面0.172 + 纸箱高约0.14 ≈ y=0.35m）
+// 扫描对象：流过的纸箱侧面QR码（订单核验），非货架产品
+(function buildScanners(){
+  var xs=[-7.5,-5.5,-3.5,-1.5, 11.0,13.0,15.0];
+  var pfz=-0.90; // 北侧货架pick face z
+  var mY=0.35;   // 纸箱QR码中心高度
+  xs.forEach(function(hx){
+    var px=hx+1.00; // 右侧柱子 x
+    // 安装支架（L型小托架，焊在柱子朝传送带一侧）
+    var bkt=mesh(box(0.032,0.032,0.055),LM(0x505a68));
+    bkt.position.set(px-0.016,mY,pfz+0.028);gScanners.add(bkt);scene.add(bkt);
+    // 扫描仪主体（朝+z方向，窗口面向传送带）
+    var body=mesh(box(0.080,0.062,0.080),LM(0xccd2da));
+    body.position.set(px-0.058,mY,pfz+0.068);gScanners.add(body);scene.add(body);
+    // 读码窗口（朝传送带方向，+z面）
+    var win=mesh(box(0.050,0.036,0.006),LM(0x060c14));
+    win.position.set(px-0.058,mY,pfz+0.111);gScanners.add(win);scene.add(win);
+    // 红色扫描锥面（从窗口射向传送带上纸箱，照片中的红色三角扇面）
+    var coneG=new THREE.ConeGeometry(0.18,0.80,4,1);
+    var coneM=new THREE.MeshLambertMaterial({color:0xff1100,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false});
+    var cone=new THREE.Mesh(coneG,coneM);
+    cone.rotation.x=Math.PI/2; // 锥尖朝+z
+    cone.position.set(px-0.058,mY,pfz+0.52);
+    gScanners.add(cone);scene.add(cone);
+    // 激光中心线（水平射向传送带中心z=0）
+    var beam=mesh(box(0.002,0.002,0.88),new THREE.MeshLambertMaterial({color:0xff0000,emissive:new THREE.Color(0xff0000),emissiveIntensity:2.8,transparent:true,opacity:0}));
+    beam.position.set(px-0.058,mY,pfz+0.55);gScanners.add(beam);scene.add(beam);
+    // 状态LED（绿色）
+    var led=mesh(sph(0.012,6),new THREE.MeshLambertMaterial({color:0x44ff88,emissive:new THREE.Color(0x22cc44),emissiveIntensity:2.0}));
+    led.position.set(px-0.014,mY+0.024,pfz+0.068);gScanners.add(led);scene.add(led);
+  });
+  // ── 4个外柱扫描器（左外柱：体在post右侧；右外柱：体在post左侧）──
+  // 非CL左外柱 x=-8.5 （镜像，body在post右侧+x）
+  (function(){var px=-8.5,pfz=-0.90,mY=0.35;
+    var bkt=mesh(box(0.032,0.032,0.055),LM(0x505a68));bkt.position.set(px+0.016,mY,pfz+0.028);gScanners.add(bkt);scene.add(bkt);
+    var body=mesh(box(0.080,0.062,0.080),LM(0xccd2da));body.position.set(px+0.058,mY,pfz+0.068);gScanners.add(body);scene.add(body);
+    var win=mesh(box(0.050,0.036,0.006),LM(0x060c14));win.position.set(px+0.058,mY,pfz+0.111);gScanners.add(win);scene.add(win);
+    var coneG=new THREE.ConeGeometry(0.18,0.80,4,1);var coneM=new THREE.MeshLambertMaterial({color:0xff1100,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false});
+    var cone=new THREE.Mesh(coneG,coneM);cone.rotation.x=Math.PI/2;cone.position.set(px+0.058,mY,pfz+0.52);gScanners.add(cone);scene.add(cone);
+    var beam=mesh(box(0.002,0.002,0.88),new THREE.MeshLambertMaterial({color:0xff0000,emissive:new THREE.Color(0xff0000),emissiveIntensity:2.8,transparent:true,opacity:0}));beam.position.set(px+0.058,mY,pfz+0.55);gScanners.add(beam);scene.add(beam);
+    var led=mesh(sph(0.012,6),new THREE.MeshLambertMaterial({color:0x44ff88,emissive:new THREE.Color(0x22cc44),emissiveIntensity:2.0}));led.position.set(px+0.014,mY+0.024,pfz+0.068);gScanners.add(led);scene.add(led);
+  })();
+  // 非CL右外柱 x=1.5 （同主列样式，body在post左侧-x）
+  (function(){var px=1.5,pfz=-0.90,mY=0.35;
+    var bkt=mesh(box(0.032,0.032,0.055),LM(0x505a68));bkt.position.set(px-0.016,mY,pfz+0.028);gScanners.add(bkt);scene.add(bkt);
+    var body=mesh(box(0.080,0.062,0.080),LM(0xccd2da));body.position.set(px-0.058,mY,pfz+0.068);gScanners.add(body);scene.add(body);
+    var win=mesh(box(0.050,0.036,0.006),LM(0x060c14));win.position.set(px-0.058,mY,pfz+0.111);gScanners.add(win);scene.add(win);
+    var coneG=new THREE.ConeGeometry(0.18,0.80,4,1);var coneM=new THREE.MeshLambertMaterial({color:0xff1100,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false});
+    var cone=new THREE.Mesh(coneG,coneM);cone.rotation.x=Math.PI/2;cone.position.set(px-0.058,mY,pfz+0.52);gScanners.add(cone);scene.add(cone);
+    var beam=mesh(box(0.002,0.002,0.88),new THREE.MeshLambertMaterial({color:0xff0000,emissive:new THREE.Color(0xff0000),emissiveIntensity:2.8,transparent:true,opacity:0}));beam.position.set(px-0.058,mY,pfz+0.55);gScanners.add(beam);scene.add(beam);
+    var led=mesh(sph(0.012,6),new THREE.MeshLambertMaterial({color:0x44ff88,emissive:new THREE.Color(0x22cc44),emissiveIntensity:2.0}));led.position.set(px-0.014,mY+0.024,pfz+0.068);gScanners.add(led);scene.add(led);
+  })();
+  // CL左外柱 x=10.0 （镜像，body在post右侧+x）
+  (function(){var px=10.0,pfz=-0.90,mY=0.35;
+    var bkt=mesh(box(0.032,0.032,0.055),LM(0x505a68));bkt.position.set(px+0.016,mY,pfz+0.028);gScanners.add(bkt);scene.add(bkt);
+    var body=mesh(box(0.080,0.062,0.080),LM(0xccd2da));body.position.set(px+0.058,mY,pfz+0.068);gScanners.add(body);scene.add(body);
+    var win=mesh(box(0.050,0.036,0.006),LM(0x060c14));win.position.set(px+0.058,mY,pfz+0.111);gScanners.add(win);scene.add(win);
+    var coneG=new THREE.ConeGeometry(0.18,0.80,4,1);var coneM=new THREE.MeshLambertMaterial({color:0xff1100,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false});
+    var cone=new THREE.Mesh(coneG,coneM);cone.rotation.x=Math.PI/2;cone.position.set(px+0.058,mY,pfz+0.52);gScanners.add(cone);scene.add(cone);
+    var beam=mesh(box(0.002,0.002,0.88),new THREE.MeshLambertMaterial({color:0xff0000,emissive:new THREE.Color(0xff0000),emissiveIntensity:2.8,transparent:true,opacity:0}));beam.position.set(px+0.058,mY,pfz+0.55);gScanners.add(beam);scene.add(beam);
+    var led=mesh(sph(0.012,6),new THREE.MeshLambertMaterial({color:0x44ff88,emissive:new THREE.Color(0x22cc44),emissiveIntensity:2.0}));led.position.set(px+0.014,mY+0.024,pfz+0.068);gScanners.add(led);scene.add(led);
+  })();
+  // CL右外柱 x=18.0 （同主列样式，body在post左侧-x）
+  (function(){var px=18.0,pfz=-0.90,mY=0.35;
+    var bkt=mesh(box(0.032,0.032,0.055),LM(0x505a68));bkt.position.set(px-0.016,mY,pfz+0.028);gScanners.add(bkt);scene.add(bkt);
+    var body=mesh(box(0.080,0.062,0.080),LM(0xccd2da));body.position.set(px-0.058,mY,pfz+0.068);gScanners.add(body);scene.add(body);
+    var win=mesh(box(0.050,0.036,0.006),LM(0x060c14));win.position.set(px-0.058,mY,pfz+0.111);gScanners.add(win);scene.add(win);
+    var coneG=new THREE.ConeGeometry(0.18,0.80,4,1);var coneM=new THREE.MeshLambertMaterial({color:0xff1100,transparent:true,opacity:0,side:THREE.DoubleSide,depthWrite:false});
+    var cone=new THREE.Mesh(coneG,coneM);cone.rotation.x=Math.PI/2;cone.position.set(px-0.058,mY,pfz+0.52);gScanners.add(cone);scene.add(cone);
+    var beam=mesh(box(0.002,0.002,0.88),new THREE.MeshLambertMaterial({color:0xff0000,emissive:new THREE.Color(0xff0000),emissiveIntensity:2.8,transparent:true,opacity:0}));beam.position.set(px-0.058,mY,pfz+0.55);gScanners.add(beam);scene.add(beam);
+    var led=mesh(sph(0.012,6),new THREE.MeshLambertMaterial({color:0x44ff88,emissive:new THREE.Color(0x22cc44),emissiveIntensity:2.0}));led.position.set(px-0.014,mY+0.024,pfz+0.068);gScanners.add(led);scene.add(led);
+  })();
+  // 缓冲区台式扫描器已由 St.106 落地式扫描器替代（移至 x=8.0 南侧）
+})();
+
+// ── CAMERA PRESETS ──
+var cams={
+  iso:    {p:[10,28,62],  t:[10,1.5,0]},
+  top:    {p:[10,75,0.1], t:[10,0,0]},
+  side:   {p:[-28,12,0],  t:[10,2,0]},
+  andon:  {p:[6.25,6,18], t:[6.25,3.5,-5.44]}
+};
+function setCam(k){
+  var c=cams[k];if(!c)return;
+  camera.position.set(c.p[0],c.p[1],c.p[2]);
+  controls.target.set(c.t[0],c.t[1],c.t[2]);controls.update();
+  document.querySelectorAll('#cambar button').forEach(function(b){b.classList.remove('act')});
+  var bid=document.getElementById('b-'+k);if(bid)bid.classList.add('act');
+}
+setCam('iso');
+
+// ════════════════════════════════════════════════════════════════
+// ── ANIMATION ENGINE ──────────────────────────────────────────
+// Step 1  : 开口纸箱密集生成 (St.100)
+// Step 2  : St.105 停顿打印独有 QR 码
+// Step 2b : 经过每个扫码器触发红色激光扫描效果
+// ════════════════════════════════════════════════════════════════
+var _clock=new THREE.Clock();
+
+// ── 开口纸箱（5面独立墙 + 内底 + 4片翻盖）── 返回 {grp, flaps:[ff,fb,fl,fr]}
+function _mkOpenBox(w,h,d,col){
+  var g=new THREE.Group();
+  var t=0.009;
+  var wM=new THREE.MeshLambertMaterial({color:col});
+  var btm=mesh(box(w,t,d),wM);btm.position.y=-h/2+t/2;g.add(btm);
+  var fnt=mesh(box(w,h,t),wM);fnt.position.z=d/2-t/2;g.add(fnt);
+  var bk=mesh(box(w,h,t),wM);bk.position.z=-d/2+t/2;g.add(bk);
+  var lt=mesh(box(t,h,d-t*2),wM);lt.position.x=-w/2+t/2;g.add(lt);
+  var rt=mesh(box(t,h,d-t*2),wM);rt.position.x=w/2-t/2;g.add(rt);
+  var flr=mesh(box(w-t*4,t*0.5,d-t*4),new THREE.MeshLambertMaterial({color:0x7a5818}));
+  flr.position.y=-h/2+t*1.5;g.add(flr);
+  var fH=h*0.55;
+  var fM=new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide});
+  var ff=mesh(box(w-t*2,t,fH),fM);ff.position.set(0,h/2-t/2,d/2+fH/2);g.add(ff);
+  var fb=mesh(box(w-t*2,t,fH),fM);fb.position.set(0,h/2-t/2,-(d/2+fH/2));g.add(fb);
+  var sfH=fH*0.60;
+  var fl=mesh(box(sfH,t,d-t*2),fM);fl.position.set(-(w/2+sfH/2),h/2-t/2,0);g.add(fl);
+  var fr=mesh(box(sfH,t,d-t*2),fM);fr.position.set(w/2+sfH/2,h/2-t/2,0);g.add(fr);
+  return {grp:g,flaps:[ff,fb,fl,fr]};
+}
+
+// ── 纸箱规格定义（8 种不同尺寸/颜色）──
+var _CTDEFS=[
+  {w:0.20,h:0.200,d:0.25,col:0xd4a845},
+  {w:0.24,h:0.220,d:0.30,col:0xc89535},
+  {w:0.28,h:0.240,d:0.35,col:0xd2a040},
+  {w:0.16,h:0.180,d:0.20,col:0xd4b860},
+  {w:0.32,h:0.260,d:0.40,col:0xc09030},
+  {w:0.22,h:0.210,d:0.28,col:0xba8525},
+  {w:0.18,h:0.190,d:0.22,col:0xd6b050},
+  {w:0.26,h:0.230,d:0.32,col:0xc88030}
+];
+var _CT_Y=0.186;   // 传送面高度（比皮带顶面0.184m略高2mm，消除Z-fighting重影）
+var _CT_SX=-17.4;  // St.100 出料口 x
+// ── QR打印扫描光束（print状态时跟随纸箱做上下扫描，其余时间隐藏）──
+var _qrBeam=mesh(box(0.072,0.003,0.005),new THREE.MeshLambertMaterial({color:0x00ffaa,emissive:new THREE.Color(0x00ff88),emissiveIntensity:3.5,transparent:true,opacity:0,depthWrite:false}));
+_qrBeam.position.set(s105x,_CT_Y+0.10,0);
+scene.add(_qrBeam);
+var _CT_EX=36.0;   // 超出此处回收（覆盖St.250标签核验后出库段）
+var _CT_IV=3.5;    // 出箱节拍（约3.5s/箱，传送速度0.55m/s≈1.93m间距）
+var _ctT=0;        // 第一箱页面打开即触发（从成箱工位开始走流程）
+var _ctDI=0;       // 规格循环索引
+
+// ── 75 槽对象池 ──
+var _ctP=(function(){
+  var pool=[];
+  var _SLTCOLS=[0xffcc22,0x44aaff,0x55ccff,0xcc55ff,0x00ffcc,0xff6655,0x88ff44,0xffaa00,0x00ddbb,0xff44bb];
+  for(var i=0;i<75;i++){
+    var def=_CTDEFS[i%_CTDEFS.length];
+    var boxResult=_mkOpenBox(def.w,def.h,def.d,def.col);
+    var grp=boxResult.grp; var flaps=boxResult.flaps;
+    // QR 贴纸
+    var qBg=mesh(box(0.060,0.060,0.004),new THREE.MeshBasicMaterial({color:0xeae5d2}));
+    qBg.position.set(0,0,-def.d/2-0.002);qBg.visible=false;grp.add(qBg);
+    var qPat=mesh(box(0.042,0.042,0.003),new THREE.MeshBasicMaterial({color:0x0e1318+(i%8)*0x010100}));
+    qPat.position.set(0,0,-def.d/2-0.005);qPat.visible=false;grp.add(qPat);
+    // ── 箱内产品槽（10色小盒，撑满箱体，条码朝上）──
+    var slots=[];
+    var iw=(def.w-0.022)/5-0.002;   // 5列，几乎撑满宽度
+    var id=(def.d-0.022)/2-0.002;   // 2行，几乎撑满深度
+    var ih=Math.min(0.072,def.h*0.60);
+    for(var si=0;si<10;si++){
+      var sc=si%5,sr=Math.floor(si/5);
+      var ix=-def.w/2+0.011+iw/2+sc*(iw+0.002);
+      var iz=(sr===0)?(-id/2-0.003):(id/2+0.003);
+      var iy=-def.h/2+ih/2+0.012;
+      var sg=new THREE.Group();
+      var sbM=new THREE.MeshLambertMaterial({color:_SLTCOLS[si],emissive:new THREE.Color(_SLTCOLS[si]),emissiveIntensity:0.55});
+      sg.add(mesh(box(iw,ih,id),sbM));
+      // 条码（黑底+3根白线，朝上 +Y）
+      var bkg=mesh(box(iw*0.72,0.003,id*0.32),new THREE.MeshLambertMaterial({color:0x111111}));
+      bkg.position.y=ih/2+0.0015;sg.add(bkg);
+      [-iw*0.15,0,iw*0.15].forEach(function(bx){
+        var bl=mesh(box(iw*0.10,0.003,id*0.24),new THREE.MeshLambertMaterial({color:0xeeeeee}));
+        bl.position.set(bx,ih/2+0.0025,0);sg.add(bl);
+      });
+      sg.position.set(ix,iy,iz);sg.visible=false;grp.add(sg);slots.push(sg);
+    }
+    // ── 封箱元素（St.230后显示：盖板+黄色胶带）──
+    var sealTop=mesh(box(def.w-0.001,0.012,def.d-0.001),new THREE.MeshLambertMaterial({color:def.col}));
+    sealTop.position.y=def.h/2-0.006;sealTop.visible=false;grp.add(sealTop);
+    var sealTape=mesh(box(def.w*0.72,0.007,0.040),new THREE.MeshLambertMaterial({color:0xddcc00,emissive:new THREE.Color(0x443300),emissiveIntensity:0.7}));
+    sealTape.position.y=def.h/2+0.003;sealTape.visible=false;grp.add(sealTape);
+    // ── 快递标签（St.240贴标后显示）──
+    var labelMesh=mesh(box(def.w*0.58,0.007,def.d*0.40),new THREE.MeshLambertMaterial({color:0xf0ece0}));
+    labelMesh.position.y=def.h/2+0.007;labelMesh.visible=false;grp.add(labelMesh);
+    var labelQR=mesh(box(def.w*0.12,0.008,def.d*0.12),new THREE.MeshLambertMaterial({color:0x111111}));
+    labelQR.position.set(def.w*0.17,def.h/2+0.008,def.d*0.08);labelQR.visible=false;grp.add(labelQR);
+    var labelBar=mesh(box(def.w*0.36,0.007,def.d*0.06),new THREE.MeshLambertMaterial({color:0x222222}));
+    labelBar.position.set(-def.w*0.08,def.h/2+0.007,-def.d*0.08);labelBar.visible=false;grp.add(labelBar);
+    grp.visible=false;scene.add(grp);
+    pool.push({grp:grp,qBg:qBg,qPat:qPat,def:def,slots:slots,flaps:flaps,
+               sealTop:sealTop,sealTape:sealTape,labelMesh:labelMesh,labelQR:labelQR,labelBar:labelBar,
+               active:false,x:0,cz:0,state:'moving',sT:0,scanned:[],held:false,printT:-1,
+               itemsInBox:0,targetPicks:5,needsManual:false,sealed:false,labeled:false,
+               divertState:'none',pendingDivert:false,hasBeenTo220:false,
+               divertT:0,divertDwell:4,slideX:25.5,itemsInBox0:0,mergeWait:0});
+  }
+  return pool;
+})();
+
+// ── ROBOT PICKING ANIMATION SYSTEM ──
+// 9台Delta机器人自主运行，MES随机货道指令，4秒/次拣货节拍
+// 末端执行器全幅移动至货架对角线任意货道（x/z全覆盖），拣货后放入纸箱
+// 三段式伸缩臂实时延伸/缩回，视觉呈现真实拣货动作
+
+// 辅助函数
+function _lp(a,b,t){return a+(b-a)*t;}
+function _ease(t){return t<0.5?2*t*t:1-2*(1-t)*(1-t);}
+
+// 拣货颜色（按机器人序号）
+var _RA_COLS=[0xffcc22,0xffcc22,0x44aaff,0x55ccff,0xcc55ff,0x00ffcc,0x00eebb,0x00ddcc,0x00ffaa];
+
+// 为每台机器人创建产品小包装盒（85×55×65mm，强发光确保可见）和吸盘指示球
+_ROBOT_EEFS.forEach(function(r,ri){
+  var col=_RA_COLS[ri]||0xffffff;
+  var pg=new THREE.Group();
+  // 主体（强emissive发光，场景中清晰可见）
+  var bodyM=new THREE.MeshLambertMaterial({color:col,emissive:new THREE.Color(col),emissiveIntensity:0.50,transparent:true,opacity:0.95});
+  var capM=new THREE.MeshLambertMaterial({color:0xf5f3ee,transparent:true,opacity:0.95});
+  var labelM=new THREE.MeshLambertMaterial({color:0xedeae0,transparent:true,opacity:0.95});
+  // 品牌色带高亮
+  var strM=new THREE.MeshLambertMaterial({color:col,emissive:new THREE.Color(col),emissiveIntensity:1.40,transparent:true,opacity:0.98});
+  var inkM=new THREE.MeshLambertMaterial({color:0x141414,transparent:true,opacity:0.22});
+  // 主体盒 85×55×65mm
+  pg.add(mesh(box(0.085,0.055,0.065),bodyM));
+  // 白顶盖
+  var cap=mesh(box(0.087,0.006,0.067),capM);cap.position.y=0.0305;pg.add(cap);
+  // 标签区
+  var lbl=mesh(box(0.086,0.016,0.067),labelM);lbl.position.y=0.004;pg.add(lbl);
+  // 高亮色带（最亮，场景定位用）
+  var str=mesh(box(0.086,0.009,0.067),strM);str.position.y=0.021;pg.add(str);
+  // 侧面暗纹
+  var ink=mesh(box(0.001,0.046,0.050),inkM);ink.position.set(-0.043,0,0);pg.add(ink);
+  pg.visible=false;
+  scene.add(pg);
+  r.prod=pg;
+  var ballM2=new THREE.MeshLambertMaterial({color:col,emissive:new THREE.Color(col),emissiveIntensity:0,transparent:true,opacity:0.92});
+  r.ball=mesh(sph(0.042,8),ballM2); scene.add(r.ball);
+});
+
+// 为每台机器人选取新货道目标
+// 每台delta负责南北对称两个重力货架，对角线全幅移动覆盖所有货道所有层
+function _newTarget(r){
+  var _pool=_ROBOT_LANE_POOLS[r.cx];
+  if(_pool&&_pool.length>0){
+    // 优先选有货的货道；全空时允许选任意货道（极少发生）
+    var _avail=_pool.filter(function(ln){return ln.fill>0;});
+    if(!_avail.length)_avail=_pool;
+    var _ln=_avail[Math.floor(Math.random()*_avail.length)];
+    r.tgtLane=_ln;
+    r.tgtX=_ln.tx;
+    r.side=_ln.flip?-1:1;
+    r.tgtZ=_ln.fz;
+    r.pickY=_ln.frontY;
+    r.pickExt=Math.max(0,Math.min(1,(2.125-r.pickY)/2.05));
+  }else{
+    // fallback（货道数据未就绪时）
+    r.tgtLane=null;
+    r.tgtX=r.cx+_lp(-0.88,0.88,Math.random());
+    r.side=(Math.random()>0.5)?1:-1;
+    r.tgtZ=r.cz+r.side*0.90;
+    r.pickY=0.20+Math.random()*1.85;
+    r.pickExt=Math.max(0,Math.min(1,(2.125-r.pickY)/2.05));
+  }
+}
+
+// 更新单台机器人EEF全部部件位置（ex/ez=末端相对cx/cz偏移，ext=延伸系数0-1）
+function _applyEEF(r,ex,ez,ext){
+  var nx=r.cx+ex, nz=r.cz+ez;
+  // 上部固定件（随x/z移动，y位置固定）
+  r.wrist.position.set(nx, r.eeY+0.02, nz);
+  r.actBox.position.set(nx, r.eeY-0.13, nz);
+  r.actRib.position.set(nx+0.058, r.eeY-0.13, nz);
+  r.sh1.position.set(nx, r.s1bot+r.s1len/2, nz);
+  // 三段式伸缩：s2最大伸出1.30m，s3最大伸出1.00m，覆盖货架全高
+  // ext=0：缩进（短节），ext=1：完全伸出（可达货架底层）
+  var s2l=_lp(r.s2len,1.30,ext);
+  var s3l=_lp(r.s3len,1.00,ext);
+  r.sh2.scale.y=s2l/r.s2len;
+  r.sh2.position.set(nx, r.s1bot-s2l/2, nz);
+  var s2b=r.s1bot-s2l;
+  r.sh3.scale.y=s3l/r.s3len;
+  r.sh3.position.set(nx, s2b-s3l/2, nz);
+  var s3b=s2b-s3l;
+  // 末端工具座和吸盘随第三段底端移动
+  r.toolMnt.position.set(nx, s3b-0.025, nz);
+  r.cups.forEach(function(c){c.m.position.set(nx+c.ox, s3b-0.062, nz+c.oz);});
+  // 视觉相机固定跟随第一段底端
+  var camY=r.s1bot+0.06;
+  r.camBkt.position.set(nx-0.065, camY+0.038, nz+0.028);
+  r.camB.position.set(nx-0.090, camY, nz+0.028);
+  r.camL.position.set(nx-0.090, camY, nz+0.040);
+  // 指示球和产品块跟随末端执行器最底端
+  var eefTipY=s3b-0.075;
+  r.ball.position.set(nx, eefTipY, nz);
+  r.ball.material.emissiveIntensity=r.prodActive?2.5:0;
+  if(r.prod.visible) r.prod.position.set(nx, eefTipY-0.027, nz); // 产品顶面贴紧吸盘
+}
+
+// 相位时长（waitBox等待纸箱无时限；toShelf已合并三轴同步运动，总计≈3.1s）
+var _PH={toShelf:0.90, pick:0.25, retract:0.55, descBox:0.45, drop:0.30, ret:0.55};
+
+function _triggerRobotPick(scKey){ /* MES扫码触发已整合至自主循环，保留接口兼容 */ }
+
+function _robotPickTick(dt){
+  _ROBOT_EEFS.forEach(function(r){
+    r.t+=dt;
+    if(r.t<0){_applyEEF(r,0,0,0);return;}
+    if(r.state==='idle'){_newTarget(r);r.state='toShelf';r.t=0;r.fastMode=false;}
+
+    if(r.state==='toShelf'){
+      // Delta三轴同步：飞向货道拣货位（快速模式从放货点出发）
+      var dur=r.fastMode?0.42:_PH.toShelf;
+      var p=_ease(Math.min(r.t/dur,1));
+      var sx=r.fastMode?r.retStartEx:0;
+      var sy=r.fastMode?0.90:0;
+      _applyEEF(r,_lp(sx,r.tgtX-r.cx,p),_lp(0,r.tgtZ-r.cz,p),_lp(sy,r.pickExt,p));
+      if(r.t>=dur){r.state='pick';r.t=0;}
+
+    }else if(r.state==='pick'){
+      _applyEEF(r,r.tgtX-r.cx,r.tgtZ-r.cz,r.pickExt);
+      r.prodActive=true;
+      if(r.t>=_PH.pick){r.prod.visible=true;r.state='retract';r.t=0;}
+
+    }else if(r.state==='retract'){
+      var p=_ease(Math.min(r.t/_PH.retract,1));
+      if(r.fastMode&&r.lockedCarton){
+        // 快速模式：带货直接飞回锁定纸箱上方，省去waitBox
+        var tcx=r.lockedCarton.x-r.cx;
+        _applyEEF(r,_lp(r.tgtX-r.cx,tcx,p),_lp(r.tgtZ-r.cz,0,p),_lp(r.pickExt,0,p));
+        if(r.t>=_PH.retract){r.state='descBox';r.t=0;}
+      } else {
+        _applyEEF(r,_lp(r.tgtX-r.cx,0,p),_lp(r.tgtZ-r.cz,0,p),_lp(r.pickExt,0,p));
+        if(r.t>=_PH.retract){r.state='waitBox';r.t=0;}
+      }
+
+    }else if(r.state==='waitBox'){
+      _applyEEF(r,0,0,0);
+      if(r.t>=0.10){
+        var ct=_findCarton(r.cx);
+        if(ct){
+          ct.held=true;
+          r.lockedCarton=ct;
+          // 同一台Delta最多2次拣货：75%概率1次，25%概率2次
+          r.picksForCarton=(Math.random()<0.75)?1:2;
+          r.picksDone=0; r.fastMode=false;
+          r.state='descBox';r.t=0;
+        }
+      }
+
+    }else if(r.state==='descBox'){
+      var ex=r.lockedCarton?r.lockedCarton.x-r.cx:0;
+      var p=_ease(Math.min(r.t/_PH.descBox,1));
+      _applyEEF(r,ex,0,_lp(0,0.90,p));
+      if(r.t>=_PH.descBox){r.state='drop';r.t=0;}
+
+    }else if(r.state==='drop'){
+      var ex=r.lockedCarton?r.lockedCarton.x-r.cx:0;
+      _applyEEF(r,ex,0,0.90);
+      if(r.t>0.10&&r.prod.visible){
+        r.prod.visible=false; r.prodActive=false;
+        // ── 消耗货道前排商品（InstancedMesh实例缩为不可见）──
+        if(r.tgtLane&&r.tgtLane.fill>0){
+          var _ci=r.tgtLane.instIds[r.tgtLane.maxFill-r.tgtLane.fill];
+          _im.setMatrixAt(_ci,_imHide);_im.instanceMatrix.needsUpdate=true;
+          r.tgtLane.fill--;
+          // 货道剩余≤5件时亮绿灯并排队补货
+          if(r.tgtLane.fill<=5&&!r.tgtLane.ledOn&&!r.tgtLane.restocking){
+            r.tgtLane.ledOn=true;
+            if(r.tgtLane.ledDome)r.tgtLane.ledDome.material.emissiveIntensity=2.5;
+            _restockQueue.push(r.tgtLane);
+          }
+        }
+        // 产品落入箱：显示对应槽位小产品盒（条码朝上）
+        if(r.lockedCarton&&r.lockedCarton.slots&&r.lockedCarton.itemsInBox<r.lockedCarton.slots.length){
+          r.lockedCarton.slots[r.lockedCarton.itemsInBox].visible=true;
+          r.lockedCarton.itemsInBox++;
+        }
+      }
+      if(r.t>=_PH.drop){
+        r.retStartEx=ex;
+        r.picksDone++;
+        if(r.picksDone<r.picksForCarton&&r.lockedCarton&&r.lockedCarton.active){
+          // 还有第二次拣货：快速飞回货架取同订单另一SKU
+          r.fastMode=true;
+          _newTarget(r);
+          r.state='toShelf'; r.t=0;
+        } else {
+          // 完成——释放纸箱，回中心
+          r.fastMode=false;
+          if(r.lockedCarton){r.lockedCarton.held=false;r.lockedCarton=null;}
+          r.state='ret'; r.t=0;
+        }
+      }
+
+    }else if(r.state==='ret'){
+      var p=_ease(Math.min(r.t/_PH.ret,1));
+      _applyEEF(r,_lp(r.retStartEx,0,p),0,_lp(0.90,0,p));
+      if(r.t>=_PH.ret){r.state='idle';r.t=0;}
+    }
+  });
+}
+
+// ── 全线扫码器位置（s105仅触发停止打印，其余全部触发激光束）──
+var _SCANS=[
+  {x:-16.0,key:'s105'},  // QR打印机（纸箱停车打码，不触发激光束）
+  {x:-11.0,key:'s_pre'}, // SCAN_PRE入库扫码
+  {x: -8.5,key:'s_n0'},  // 非CL左外柱
+  {x: -6.5,key:'s_n1'},  // 非CL内柱1
+  {x: -4.5,key:'s_n2'},  // 非CL内柱2
+  {x: -2.5,key:'s_n3'},  // 非CL内柱3
+  {x: -0.5,key:'s_n4'},  // 非CL内柱4
+  {x:  1.5,key:'s_n5'},  // 非CL右外柱
+  {x:  8.0,key:'s106'},  // St.106缓冲扫码
+  {x: 10.0,key:'s_c0'},  // CL左外柱
+  {x: 12.0,key:'s_c1'},  // CL内柱1
+  {x: 14.0,key:'s_c2'},  // CL内柱2
+  {x: 16.0,key:'s_c3'},  // CL内柱3
+  {x: 18.0,key:'s_c4'},  // CL右外柱
+  {x: 23.0,key:'s210'},  // St.210装箱核验
+  {x: 27.0,key:'s230'},  // St.230封箱机（触发合盖+胶带动画）
+  {x: 30.0,key:'s240'},  // St.240贴标机（触发快递单号显示）
+  {x: 32.0,key:'s250'}   // St.250标签核验（最终出库确认）
+];
+
+// ══ 扫描光效系统（三类：侧面条码扫描 / St.210龙门俯扫产品 / St.250龙门俯扫标签）══
+// 侧面扫描：锥形光束从北侧货架(z≈-0.90)射向纸箱侧面(z≈-0.20)，不穿透纸箱
+// 龙门俯扫：复用IIFE内的fan+spot对象，加入x轴扫线动效
+var _beams=[];
+_SCANS.forEach(function(sc){
+  // s105=QR打印臂（无扫描光）, s230=封箱机（无扫描光）, s240=贴标机（无扫描光）
+  if(sc.key==='s105'||sc.key==='s230'||sc.key==='s240') return;
+
+  var entry={sc:sc, t:0};
+
+  if(sc.key==='s210'){
+    // 龙门俯扫：开箱内产品码，扫描区域宽，x向扫线动效显著
+    entry.type='gantry'; entry.dur=0.72;
+    entry.fan=_s210Fan; entry.spot=_s210Spot;
+    entry.baseX=sc.x;
+  } else if(sc.key==='s250'){
+    // 龙门俯扫：封箱后标签，扫描区域收窄
+    entry.type='gantry'; entry.dur=0.60;
+    entry.fan=_s250Fan; entry.spot=_s250Spot;
+    entry.baseX=sc.x;
+  } else {
+    // 侧面条码扫描器：锥形光束从扫描仪窗口射到纸箱侧面，止于纸箱表面
+    entry.type='side'; entry.dur=0.48;
+    // 锥形扫描光（6段，较圆润）：尖端→-Z（扫描仪），开口→+Z（纸箱侧面）
+    var cg=new THREE.ConeGeometry(0.13,0.68,6,1);
+    var cm=new THREE.MeshBasicMaterial({color:0xff1800,transparent:true,opacity:0,
+      side:THREE.DoubleSide,depthWrite:false});
+    var cone=new THREE.Mesh(cg,cm);
+    cone.rotation.x=Math.PI/2;
+    // 中心z=-0.515：尖端z=-0.855（扫描仪面），开口z=-0.175（纸箱北侧面）
+    cone.position.set(sc.x, _CT_Y+0.16, -0.515);
+    scene.add(cone);
+    // 中心激光线（更亮更细）
+    var lm=new THREE.MeshBasicMaterial({color:0xff3300,transparent:true,opacity:0,depthWrite:false});
+    var line=mesh(new THREE.BoxGeometry(0.0025,0.0025,0.68),lm);
+    line.position.copy(cone.position);
+    scene.add(line);
+    // 激光落点（红色小光斑，停在纸箱北侧面）
+    var dm=new THREE.MeshLambertMaterial({color:0xff0800,emissive:new THREE.Color(0xff1100),
+      emissiveIntensity:4.0,transparent:true,opacity:0,depthWrite:false});
+    var dot=mesh(new THREE.CircleGeometry(0.022,10),dm);
+    dot.rotation.y=Math.PI/2; // 圆面朝+Z（纸箱侧面方向）
+    dot.position.set(sc.x, _CT_Y+0.16, -0.175);
+    scene.add(dot);
+    entry.cone=cone; entry.line=line; entry.dot=dot;
+  }
+  _beams.push(entry);
+});
+
+// 触发指定扫码器（传入cartonX供龙门扫描跟随纸箱位置）
+function _shootBeam(scKey, cartonX){
+  _beams.forEach(function(b){
+    if(b.sc.key===scKey){
+      b.t=b.dur;
+      if(b.type==='gantry') b.baseX=(cartonX!==undefined)?cartonX:b.sc.x;
+    }
+  });
+  _triggerRobotPick(scKey);
+}
+
+// 每帧更新所有扫描光效
+function _beamTick(dt){
+  _beams.forEach(function(b){
+    if(b.t<=0) return;
+    b.t-=dt;
+    var raw=Math.max(0, b.t/b.dur); // 1.0→0.0
+
+    if(b.type==='side'){
+      // 渐入(前10%)→持续→渐出(后12%)，叠加低频脉冲模拟扫描读码感
+      var base;
+      if(raw>0.90)      base=_ease((1.0-raw)/0.10);
+      else if(raw>0.12) base=1.0;
+      else              base=_ease(raw/0.12);
+      var pulse=0.82+0.18*Math.abs(Math.sin(b.t*Math.PI*3.5));
+      var op=base*pulse;
+      b.cone.material.opacity=op*0.55;
+      b.line.material.opacity=Math.min(op*1.8, 1.0);
+      b.dot.material.opacity =Math.min(op*2.0, 1.0);
+      if(b.t<=0){
+        b.cone.material.opacity=0;
+        b.line.material.opacity=0;
+        b.dot.material.opacity=0;
+      }
+    } else if(b.type==='gantry'){
+      var fan=b.fan, spot=b.spot;
+      if(!fan||!spot) return;
+      // 渐入(前12%)→持续→渐出(后10%)
+      var gbase;
+      if(raw>0.88)      gbase=_ease((1.0-raw)/0.12);
+      else if(raw>0.10) gbase=1.0;
+      else              gbase=_ease(raw/0.10);
+      fan.material.opacity =gbase*0.46;
+      spot.material.opacity=gbase*0.68;
+      // x轴扫线动效（s210=宽扫±0.18模拟多产品读码，s250=窄扫±0.08模拟标签读码）
+      var amp=(b.sc.key==='s210')?0.18:0.08;
+      var sweepX=b.baseX+Math.sin((b.dur-b.t)*Math.PI*2*3.8)*amp;
+      fan.position.x=sweepX;
+      spot.position.x=sweepX;
+      if(b.t<=0){
+        fan.material.opacity=0;
+        spot.material.opacity=0;
+        fan.position.x=b.sc.x;
+        spot.position.x=b.sc.x;
+      }
+    }
+  });
+}
+
+// ── 复位单个纸箱的所有字段（spawn/respawn共用）──
+function _resetCarton(c,startX){
+  c.active=true; c.x=startX; c.cz=0;
+  c.state='moving'; c.sT=0; c.scanned=[]; c.held=false; c.printT=-1;
+  c.itemsInBox=0; c.itemsInBox0=0;
+  // 平均5件（3-8件，加权中心在5）
+  var _tp=[3,3,4,4,5,5,5,5,6,6,6,7,7,8];
+  c.targetPicks=_tp[Math.floor(Math.random()*_tp.length)];
+  c.needsManual=(c.targetPicks>5||Math.random()<0.20); // 超5件或20%随机需人工
+  c.sealed=false; c.labeled=false;
+  c.divertState='none'; c.pendingDivert=false; c.hasBeenTo220=false;
+  c.divertT=0; c.divertDwell=3.5+Math.random()*2.5; c.slideX=25.5; c.mergeWait=0;
+  if(c.slots) c.slots.forEach(function(s){s.visible=false;});
+  if(c.flaps) c.flaps.forEach(function(f){f.visible=true;});  // 翻盖打开
+  if(c.sealTop){c.sealTop.visible=false;} if(c.sealTape){c.sealTape.visible=false;}
+  if(c.labelMesh){c.labelMesh.visible=false;} if(c.labelQR){c.labelQR.visible=false;}
+  if(c.labelBar){c.labelBar.visible=false;}
+  c.qBg.visible=false; c.qPat.visible=false;
+  c.grp.position.set(startX,_CT_Y+c.def.h/2,0);
+  c.grp.visible=true;
+}
+
+// ── 从对象池生成一个纸箱 ──
+function _ctSpawn(){
+  for(var i=0;i<_ctP.length;i++){
+    var c=_ctP[i];
+    if(!c.active){
+      _resetCarton(c,_CT_SX);
+      if(typeof s100LED!=='undefined'){
+        s100LED.material.emissiveIntensity=3.2;
+        setTimeout(function(){s100LED.material.emissiveIntensity=1.5;},200);
+      }
+      _ctDI++;return;
+    }
+  }
+}
+
+// ── 在指定x位置生成纸箱（预填充专用）──
+function _ctSpawnAt(startX){
+  for(var i=0;i<_ctP.length;i++){
+    var c=_ctP[i];
+    if(!c.active){_resetCarton(c,startX);_ctDI++;return true;}
+  }
+  return false;
+}
+// ── 初始化：不预填充传送带，每次打开从第一个纸箱成箱开始按节拍走完整流程 ──
+
+// ── 查找机器人正下方最近的可用纸箱（主线未分流的纸箱才可拣）──
+function _findCarton(cx){
+  var best=null,bestDist=0.52;
+  _ctP.forEach(function(c){
+    if(!c.active||c.held) return;
+    if(c.divertState!=='none') return; // 分流中的纸箱不可拣
+    if(c.x>cx+0.06) return;
+    var d=cx-c.x;
+    if(d>=0&&d<bestDist){bestDist=d;best=c;}
+  });
+  return best;
+}
+
+// ── 每帧更新所有活跃纸箱 ──
+function _ctTick(dt){
+  var _pc=null;
+  _ctP.forEach(function(c){
+    if(!c.active) return;
+
+    // ══ 分流路由状态机 ══
+    if(c.divertState==='push'){
+      // 重力滚轮：从z=0滑至z=-3.75（St.220入口）
+      c.cz-=1.6*dt;
+      if(c.cz<=-3.75){
+        c.cz=-3.75; c.divertState='at220'; c.divertT=0; c.itemsInBox0=c.itemsInBox;
+      }
+      c.grp.position.z=c.cz; return;
+    }
+    if(c.divertState==='at220'){
+      // 人工站驻留：缺失的中长尾产品逐件放入（每0.85s出现一件）
+      c.divertT+=dt;
+      var shouldShow=c.itemsInBox0+Math.floor(c.divertT/0.85);
+      for(var ri=c.itemsInBox;ri<Math.min(shouldShow,c.targetPicks);ri++){
+        if(c.slots[ri]){c.slots[ri].visible=true;c.itemsInBox++;}
+      }
+      if(c.divertT>=c.divertDwell){c.divertState='return_slide';c.slideX=25.5;}
+      c.grp.position.z=c.cz; return;
+    }
+    if(c.divertState==='return_slide'){
+      // 沿人工台面从x=25.5向x=20.5（St.225入口）横移
+      c.slideX-=2.2*dt;
+      if(c.slideX<=20.5){c.slideX=20.5;c.divertState='return_belt';}
+      c.x=c.slideX; c.grp.position.x=c.x; c.grp.position.z=c.cz; return;
+    }
+    if(c.divertState==='return_belt'){
+      // St.225动力带：从z=-3.60运行至带末z=-0.55，必须走完全程才允许并入主线
+      if(c.cz<-0.55) c.cz+=0.65*dt;
+      if(c.cz>-0.55) c.cz=-0.55; // 停在传送带末端出口，等待并入
+      c.grp.position.z=c.cz; c.grp.position.x=c.x;
+      // 只有纸箱到达带末（cz>=-0.55）后才检测主线间隙
+      if(c.cz>=-0.55){
+        var _clear=true;
+        _ctP.forEach(function(o){
+          if(o!==c&&o.active&&o.divertState==='none'&&o.x>19.8&&o.x<21.2) _clear=false;
+        });
+        if(_clear){
+          // 切换到平滑并入主线状态，避免跳变
+          c.divertState='return_merge';
+          c.x+=0.55*dt; c.grp.position.x=c.x;
+        }
+      }
+      return;
+    }
+    if(c.divertState==='return_merge'){
+      // 平滑并入主线：z从-0.55滑至0，同步x随主线速度推进
+      c.cz+=1.8*dt;
+      if(c.cz>0) c.cz=0;
+      c.x+=0.55*dt;
+      c.grp.position.z=c.cz; c.grp.position.x=c.x;
+      if(c.cz>=0){
+        c.held=false;
+        c.divertState='none';
+        c.scanned=c.scanned.filter(function(s){return s!=='s210';});
+      }
+      return;
+    }
+
+    // ══ 主线正常推进 ══
+    c.x+=0.55*dt; c.grp.position.x=c.x;
+
+    // 扫码器检测
+    _SCANS.forEach(function(sc){
+      if(c.scanned.indexOf(sc.key)<0&&Math.abs(c.x-sc.x)<0.25){
+        c.scanned.push(sc.key);
+        if(sc.key!=='s105'&&sc.key!=='s230'&&sc.key!=='s240') _shootBeam(sc.key, c.x);
+        if(sc.key==='s105'){c.printT=0;_triggerPrinter();}  // QR打印臂前推
+        // St.210装箱核验：判断是否需要分流至St.220人工站
+        if(sc.key==='s210'&&!c.hasBeenTo220){
+          if(c.needsManual||Math.random()<0.10) c.pendingDivert=true;
+        }
+        // St.230自动封箱：压头下压 + 合盖 + 胶带
+        if(sc.key==='s230'&&!c.sealed){
+          c.sealed=true;
+          _triggerSealer(c); // 封箱压头动画（带当前纸箱高度）
+          // 合盖和胶带在压头动作到一半时显示（0.25s延迟）
+          var _cb=c;
+          setTimeout(function(){
+            if(_cb.flaps) _cb.flaps.forEach(function(f){f.visible=false;});
+            if(_cb.sealTop) _cb.sealTop.visible=true;
+            if(_cb.sealTape) _cb.sealTape.visible=true;
+          },250);
+        }
+        // St.240自动贴标：贴标头下压贴单号（无红光）
+        if(sc.key==='s240'&&c.sealed&&!c.labeled){
+          c.labeled=true;
+          _triggerLabeler(c); // 贴标头动画（带当前纸箱高度）
+          // 标签在贴标头接触瞬间显示（0.22s延迟）
+          var _lc=c;
+          setTimeout(function(){
+            if(_lc.labelMesh) _lc.labelMesh.visible=true;
+            if(_lc.labelQR)   _lc.labelQR.visible=true;
+            if(_lc.labelBar)  _lc.labelBar.visible=true;
+          },220);
+        }
+      }
+    });
+
+    // 纸箱到达推箱位(x≈25.5)时触发分流
+    if(c.pendingDivert&&c.divertState==='none'&&c.x>=25.4){
+      c.x=25.5; c.cz=0; c.pendingDivert=false; c.hasBeenTo220=true;
+      c.divertState='push';
+    }
+
+    if(c.x>_CT_EX){
+      // 回收：隐藏所有产品槽，重置z坐标
+      c.active=false; c.grp.visible=false; c.printT=-1;
+      c.grp.position.z=0; c.cz=0; c.divertState='none';
+      if(c.slots)  c.slots.forEach(function(s){s.visible=false;});
+      if(c.flaps)  c.flaps.forEach(function(f){f.visible=true;});
+      if(c.sealTop){c.sealTop.visible=false;} if(c.sealTape){c.sealTape.visible=false;}
+      if(c.labelMesh){c.labelMesh.visible=false;} if(c.labelQR){c.labelQR.visible=false;}
+      if(c.labelBar){c.labelBar.visible=false;}
+      c.itemsInBox=0; c.sealed=false; c.labeled=false; return;
+    }
+
+    // QR打印进度动画
+    if(c.printT>=0){
+      c.printT+=dt;
+      if(c.printT<0.35) _pc=c;
+      if(c.printT>=0.35&&!c.qBg.visible){c.qBg.visible=true;c.qPat.visible=true;}
+    }
+  });
+
+  // QR扫描光束跟随
+  if(_pc){
+    var pr=_pc.printT/0.35;
+    var by=_CT_Y+_pc.def.h/2+_lp(0.028,-0.028,pr);
+    var bz=-(_pc.def.d/2+0.005);
+    _qrBeam.position.set(_pc.x,by,bz);
+    _qrBeam.material.opacity=0.90;
+    if(typeof s105laser!=='undefined'){
+      s105laser.visible=(Math.floor(_pc.printT*14)%2===0);
+      s105laser.position.y=by; s105laser.position.x=_pc.x;
+    }
+  } else {
+    _qrBeam.material.opacity=0;
+    if(typeof s105laser!=='undefined') s105laser.visible=false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── 工人模型（St.220人工站，2人）──
+// ══════════════════════════════════════════════════════════════
+function _makeWorker(wx,wz,facePosZ){
+  var wg=new THREE.Group();
+  var skinM=new THREE.MeshLambertMaterial({color:0xd4a57a});
+  var shirtM=new THREE.MeshLambertMaterial({color:0x2255aa});
+  var pantsM=new THREE.MeshLambertMaterial({color:0x334466});
+  var glovM=new THREE.MeshLambertMaterial({color:0x336600});
+  var hatM=new THREE.MeshLambertMaterial({color:0x223344});
+  // 头
+  var head=mesh(sph(0.095,8),skinM);head.position.y=0.56;wg.add(head);
+  // 安全帽
+  var hat=mesh(cyl(0.115,0.095,0.075,8),hatM);hat.position.y=0.63;wg.add(hat);
+  // 躯干
+  var torso=mesh(box(0.22,0.28,0.13),shirtM);torso.position.y=0.29;wg.add(torso);
+  // 背带标识
+  var vest=mesh(box(0.06,0.24,0.04),new THREE.MeshLambertMaterial({color:0xffaa00,emissive:new THREE.Color(0x884400),emissiveIntensity:0.6}));
+  vest.position.set(0,0.29,0.07);wg.add(vest);
+  // 左臂（可旋转，肩关节为pivot）
+  var la=new THREE.Group();la.position.set(-0.14,0.42,0);
+  var laU=mesh(box(0.075,0.20,0.075),shirtM);laU.position.y=-0.10;la.add(laU);
+  var laL=mesh(box(0.065,0.16,0.065),skinM);laL.position.y=-0.28;la.add(laL);
+  var laG=mesh(sph(0.042,6),glovM);laG.position.y=-0.36;la.add(laG);
+  wg.add(la);
+  // 右臂
+  var ra=new THREE.Group();ra.position.set(0.14,0.42,0);
+  var raU=mesh(box(0.075,0.20,0.075),shirtM);raU.position.y=-0.10;ra.add(raU);
+  var raL=mesh(box(0.065,0.16,0.065),skinM);raL.position.y=-0.28;ra.add(raL);
+  var raG=mesh(sph(0.042,6),glovM);raG.position.y=-0.36;ra.add(raG);
+  wg.add(ra);
+  // 腿
+  [-0.065,0.065].forEach(function(lx){
+    var leg=mesh(box(0.09,0.30,0.10),pantsM);leg.position.set(lx,-0.15,0);wg.add(leg);
+    var foot=mesh(box(0.09,0.055,0.14),new THREE.MeshLambertMaterial({color:0x111111}));
+    foot.position.set(lx,-0.325,0.025);wg.add(foot);
+  });
+  // 朝向（face toward conveyor side，facing +z or -z）
+  wg.rotation.y=(facePosZ>wz)?0:Math.PI;
+  wg.position.set(wx,0.38,wz);
+  scene.add(wg);
+  return {grp:wg,la:la,ra:ra,t:0};
+}
+// 两名工人站在St.220工作台北侧，面向传送带方向（+z）
+var _workers=[
+  _makeWorker(24.2,-4.35,0),
+  _makeWorker(25.8,-4.35,0)
+];
+
+// ── 工人动画 Tick ──
+function _workerTick(dt){
+  // 检查纸箱状态
+  var at220=false, slidingCarton=null;
+  _ctP.forEach(function(c){
+    if(c.active&&c.divertState==='at220') at220=true;
+    if(c.active&&c.divertState==='return_slide'&&!slidingCarton) slidingCarton=c;
+  });
+  _workers.forEach(function(w,wi){
+    w.t+=dt;
+    if(slidingCarton && wi===0){
+      // 工人0跟随纸箱从St.220→St.225横移（推箱动作）
+      var targetX=slidingCarton.slideX-0.55;
+      w.grp.position.x=_lp(w.grp.position.x,targetX,Math.min(dt*6,1));
+      w.grp.position.z=-4.35;
+      var pushAng=-0.6+Math.sin(w.t*2.5)*0.18;
+      w.la.rotation.x=pushAng; w.ra.rotation.x=pushAng*0.9;
+      w.grp.rotation.y=0.18;
+      w.grp.rotation.z=0.05;
+    } else if(at220){
+      // 回到工位，作业动作：手臂循环 向下伸→拿起→放入箱（周期2.4s，两人错相位）
+      w.grp.position.x=_lp(w.grp.position.x,(wi===0)?24.2:25.8,Math.min(dt*4,1));
+      w.grp.position.z=-4.35;
+      w.grp.rotation.y=0;
+      var phase=((w.t+wi*1.2)%2.4);
+      var ang;
+      if(phase<0.8)       ang=_lp(0,-1.05,_ease(phase/0.8));  // 伸向箱内
+      else if(phase<1.2)  ang=-1.05;                            // 持拿
+      else                ang=_lp(-1.05,0,_ease((phase-1.2)/1.2)); // 回位
+      w.la.rotation.x=ang;
+      w.ra.rotation.x=ang*0.85; // 右臂稍慢，体现双手自然差异
+      w.grp.rotation.z=(wi===0)?0.08:-0.08; // 微侧身
+    } else {
+      // 待机：缓慢回到原位 + 轻微摆臂
+      w.grp.position.x=_lp(w.grp.position.x,(wi===0)?24.2:25.8,Math.min(dt*2,1));
+      w.grp.position.z=-4.35;
+      w.grp.rotation.y=0;
+      var sway=Math.sin(w.t*0.7+wi*1.3)*0.10;
+      w.la.rotation.x=sway; w.ra.rotation.x=-sway*0.8;
+      w.grp.rotation.z=0;
+    }
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── 货架补货工人系统（灯控上货：绿灯亮→工人走入→逐件补货→灯灭→工人离场）──
+// ══════════════════════════════════════════════════════════════
+function _restockTick(dt){
+  // 为队列中的货道派发补货工人（最多3名同时作业）
+  while(_restockQueue.length>0&&_RESTOCK_WORKERS.length<_MAX_RESTOCK_WORKERS){
+    var _ql=_restockQueue.shift();
+    if(_ql.restocking||!_ql.ledOn) continue;
+    // 工人从装货侧（bz方向）外部1.3m处出发
+    var _spOff=_ql.flip?-1.3:1.3;
+    var _rw=_makeWorker(_ql.tx,_ql.bz+_spOff,_ql.fz);
+    _rw.lane=_ql; _rw.state='walk_in'; _rw.t=0;
+    _rw.startZ=_ql.bz+_spOff; _rw.targetZ=_ql.bz;
+    _rw.walkDur=1.1; _rw.restockT=0; _rw.fillAtStart=_ql.fill;
+    _rw.itemInterval=0.42; // 每件商品放入间隔（秒）
+    _ql.restocking=true;
+    _RESTOCK_WORKERS.push(_rw);
+  }
+  var _dead=[];
+  _RESTOCK_WORKERS.forEach(function(w){
+    w.t+=dt;
+    var ln=w.lane;
+    if(w.state==='walk_in'){
+      // 走向货架装货面，伴随步行摆臂
+      var _wp=Math.min(w.t/w.walkDur,1);
+      w.grp.position.z=_lp(w.startZ,w.targetZ,_ease(_wp));
+      var _sp=w.t*3.2;
+      w.grp.position.y=0.38+Math.abs(Math.sin(_sp))*0.016;
+      w.la.rotation.x=Math.sin(_sp)*0.36;
+      w.ra.rotation.x=-Math.sin(_sp)*0.36;
+      if(w.t>=w.walkDur){w.state='restock';w.t=0;w.restockT=0;}
+
+    }else if(w.state==='restock'){
+      w.restockT+=dt;
+      // 按时间间隔逐件还原商品（从内侧向拣货面方向填满）
+      var _placed=Math.floor(w.restockT/w.itemInterval);
+      var _tgtFill=Math.min(w.fillAtStart+_placed,ln.maxFill);
+      while(ln.fill<_tgtFill){
+        // 还原顺序：从已消耗区域的内端开始（靠近现有商品的那件先回）
+        var _rk=ln.maxFill-ln.fill-1;   // 当前最靠近现有商品的空位索引
+        var _ri=ln.instIds[_rk];
+        var _dOff2=0.022+_rk*(ln.BOX_D+0.004);
+        var _pz3=ln.flip?ln.fz-_dOff2:ln.fz+_dOff2;
+        var _pyAdj2=_dOff2*ln.tanSlope;
+        _imRst.makeTranslation(ln.tx,ln.frontY+_pyAdj2,_pz3);
+        _im.setMatrixAt(_ri,_imRst);_im.instanceMatrix.needsUpdate=true;
+        ln.fill++;
+      }
+      // 伸臂放货动作循环（手臂前伸→收回）
+      var _ap=(w.restockT%w.itemInterval)/w.itemInterval;
+      var _aa=_lp(-0.65,0.15,Math.sin(_ap*Math.PI));
+      w.la.rotation.x=_aa; w.ra.rotation.x=_aa*0.85;
+      w.grp.position.y=0.38+Math.sin(w.restockT*1.5)*0.006;
+      // 补满后关灯，转入离场状态
+      if(ln.fill>=ln.maxFill){
+        ln.ledOn=false; ln.restocking=false;
+        if(ln.ledDome) ln.ledDome.material.emissiveIntensity=0;
+        w.state='walk_out'; w.t=0; w.walkStartZ=w.grp.position.z;
+      }
+
+    }else if(w.state==='walk_out'){
+      var _wp=Math.min(w.t/w.walkDur,1);
+      w.grp.position.z=_lp(w.walkStartZ,w.startZ,_ease(_wp));
+      var _sp=w.t*3.2;
+      w.grp.position.y=0.38+Math.abs(Math.sin(_sp))*0.016;
+      w.la.rotation.x=Math.sin(_sp)*0.36;
+      w.ra.rotation.x=-Math.sin(_sp)*0.36;
+      if(w.t>=w.walkDur){w.grp.visible=false;_dead.push(w);}
+    }
+  });
+  // 清理已完成的工人
+  _dead.forEach(function(w){
+    var _i=_RESTOCK_WORKERS.indexOf(w);
+    if(_i>=0) _RESTOCK_WORKERS.splice(_i,1);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════
+// ── 机器动作动画（QR打印臂 / 封箱压头 / 贴标头）──
+// ══════════════════════════════════════════════════════════════
+var _printerAnim={t:-1,dur:0.38};   // s105 QR打印臂前推
+var _sealerAnim ={t:-1,dur:0.45};   // St.230 封箱压头
+var _labelerAnim={t:-1,dur:0.38};   // St.240 贴标头
+
+function _triggerPrinter(){   _printerAnim.t=0; }
+function _triggerSealer(c){   _sealerAnim.t=0;  }
+function _triggerLabeler(c){  _labelerAnim.t=0; }
+
+function _machineAnimTick(dt){
+  // ── QR打印臂：z -0.31 → -0.08 → -0.31 ──
+  if(_printerAnim.t>=0){
+    _printerAnim.t+=dt;
+    var pTotal=_printerAnim.dur*2;
+    if(_printerAnim.t<pTotal){
+      var pp=_printerAnim.t<_printerAnim.dur
+        ?_ease(_printerAnim.t/_printerAnim.dur)
+        :_ease(1-(_printerAnim.t-_printerAnim.dur)/_printerAnim.dur);
+      s105arm.position.z=_lp(-0.31, 0.02,pp); // 延伸至紧贴纸箱侧面（z≈0），动作更明显
+    } else {
+      s105arm.position.z=-0.31; // 复位
+      _printerAnim.t=-1;
+    }
+  }
+  // ── 封箱压头：y 1.62 → 0.58 → 1.62 ──
+  if(_s230Head&&_sealerAnim.t>=0){
+    _sealerAnim.t+=dt;
+    var sTotal=_sealerAnim.dur*2;
+    if(_sealerAnim.t<sTotal){
+      var sp2=_sealerAnim.t<_sealerAnim.dur
+        ?_ease(_sealerAnim.t/_sealerAnim.dur)
+        :_ease(1-(_sealerAnim.t-_sealerAnim.dur)/_sealerAnim.dur);
+      _s230Head.position.y=_lp(1.62,0.58,sp2);
+    } else {
+      _s230Head.position.y=1.62;
+      _sealerAnim.t=-1;
+    }
+  }
+  // ── 贴标头：y 1.40 → 0.50 → 1.40 ──
+  if(_s240Head&&_labelerAnim.t>=0){
+    _labelerAnim.t+=dt;
+    var lTotal=_labelerAnim.dur*2;
+    if(_labelerAnim.t<lTotal){
+      var lp2=_labelerAnim.t<_labelerAnim.dur
+        ?_ease(_labelerAnim.t/_labelerAnim.dur)
+        :_ease(1-(_labelerAnim.t-_labelerAnim.dur)/_labelerAnim.dur);
+      _s240Head.position.y=_lp(1.40,0.50,lp2);
+    } else {
+      _s240Head.position.y=1.40;
+      _labelerAnim.t=-1;
+    }
+  }
+}
+
+function animate(){
+  requestAnimationFrame(animate);
+  var dt=Math.min(_clock.getDelta(),0.05);
+  _ctT-=dt;
+  if(_ctT<=0){_ctSpawn();_ctT=_CT_IV;}
+  _ctTick(dt);
+  _beamTick(dt);
+  _robotPickTick(dt);
+  _workerTick(dt);
+  _restockTick(dt);
+  _machineAnimTick(dt);
+  controls.update();
+  renderer.render(scene,camera);
+}
+animate();
+</script>
+</body>
+</html>
