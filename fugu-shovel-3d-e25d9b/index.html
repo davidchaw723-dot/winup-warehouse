@@ -1,0 +1,1731 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- ⛔ 本页会挂到公开静态托管上发给 Rob；专利递交前不希望被搜索引擎收录。
+     robots.txt 会把路径本身暴露在站点根目录，所以只在页面内声明。 -->
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>浮动自适应成形推头 · 罐内工况仿真 | WinUp 维恩普</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;background:#030a14;
+  font-family:"PingFang SC","Microsoft YaHei","微软雅黑",-apple-system,sans-serif;color:#cfe3f5}
+#cv{position:fixed;inset:0;display:block}
+
+/* ---------- 顶栏 ---------- */
+#topbar{position:fixed;top:0;left:0;right:0;height:60px;z-index:20;
+  display:flex;align-items:center;padding:0 18px;gap:14px;
+  background:linear-gradient(180deg,rgba(3,10,20,.94),rgba(3,10,20,.55));
+  border-bottom:1px solid rgba(85,170,221,.18)}
+#topbar h1{font-size:17px;font-weight:600;color:#55aadd;letter-spacing:.5px}
+#topbar .sub{font-size:12px;color:#5f7794;letter-spacing:.3px}
+#topbar .spacer{flex:1}
+.tag{font-size:11px;padding:3px 9px;border-radius:3px;letter-spacing:.4px;white-space:nowrap}
+.tag.ver{background:rgba(85,170,221,.12);color:#55aadd;border:1px solid rgba(85,170,221,.3)}
+.tag.warn{background:rgba(176,37,37,.18);color:#e07070;border:1px solid rgba(176,37,37,.5)}
+.tag.lang{background:rgba(201,168,76,.14);color:#e6c974;border:1px solid rgba(201,168,76,.5);
+  cursor:pointer;font-weight:600;letter-spacing:1px;user-select:none}
+.tag.lang:hover{background:rgba(201,168,76,.28);color:#fff0c0}
+
+/* ---------- 面板通用 ---------- */
+.panel{position:fixed;z-index:15;background:rgba(6,16,29,.82);
+  border:1px solid rgba(85,170,221,.16);border-radius:4px;padding:12px 13px;
+  backdrop-filter:blur(6px);font-size:12px;line-height:1.65}
+.panel h3{font-size:11px;color:#C9A84C;letter-spacing:1.2px;font-weight:600;
+  margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid rgba(201,168,76,.22)}
+.row{display:flex;justify-content:space-between;gap:10px}
+.row .k{color:#66809c}
+.row .v{color:#bcd8f0;font-variant-numeric:tabular-nums}
+.row .v.hot{color:#ff8a4c}
+.row .v.lit{color:#55ccff}
+.note{margin-top:7px;font-size:10.5px;color:#4f6480;line-height:1.5}
+.est{color:#8a6d2e;font-size:10px}
+
+/* 左栏：必须限高。内容会随建模推进一直变长，之前没限高，
+   底部直接被切掉，且与左下的 #legend 撞车。 */
+#info{top:74px;left:14px;width:246px;max-height:calc(100vh - 74px - 86px);
+  overflow-y:auto;scrollbar-width:thin}
+#info::-webkit-scrollbar{width:5px}
+#info::-webkit-scrollbar-thumb{background:rgba(85,170,221,.28);border-radius:3px}
+#status{top:74px;right:14px;width:262px}
+/* 图例 + 曲线合成右下一列，flex 竖排自动让位；左边整列只给 #info */
+#rightcol{position:fixed;right:14px;bottom:96px;width:330px;z-index:15;
+  display:flex;flex-direction:column;gap:9px}
+#rightcol .panel{position:static;width:100%}
+
+/* ---------- note 折叠：默认收起，点标题展开 ----------
+   这些 note 是写给我们自己和 Rob 的判断依据（假设、反推、⚠ 警告），
+   默认不该占地方。左栏 3 组 + 图例 + 曲线，全展开时能多占 300px 以上。 */
+.foldable h3{cursor:pointer;user-select:none;display:flex;justify-content:space-between;
+  align-items:baseline;gap:6px}
+.foldable h3::after{content:'＋';font-size:12px;color:#55aadd;opacity:.65;font-weight:400}
+.foldable h3.open::after{content:'－'}
+.foldable .note{display:none}      /* 展开与否由 JS 按组精确控制，
+                                      不能用 h3.open ~ .note —— 那会把后面所有组一起展开 */
+.foldable .note.show{display:block}
+
+/* ---------- 客户版：左栏只留关键数字 ---------- */
+body.cust #info .row:not(.cust){display:none}
+body.cust #info h3{cursor:default;pointer-events:none}
+body.cust #info h3::after{content:''}
+body.cust #info h3.sub2{display:none}
+body.cust #info .note{display:none!important}
+
+/* ---------- 待 Rob 确认清单（英文，发他时打开即见） ---------- */
+#rob{top:50%;left:50%;transform:translate(-50%,-50%);width:640px;max-height:78vh;
+  overflow-y:auto;z-index:30;padding:18px 20px;background:rgba(5,14,26,.96);
+  border:1px solid rgba(201,168,76,.45)}
+#rob h2{font-size:14px;color:#C9A84C;letter-spacing:.6px;margin-bottom:3px}
+#rob .lead{font-size:11px;color:#6b86a4;line-height:1.6;margin-bottom:12px}
+#rob table{width:100%;border-collapse:collapse;font-size:11.5px}
+#rob th{text-align:left;color:#C9A84C;font-weight:600;font-size:10.5px;letter-spacing:.8px;
+  padding:5px 7px;border-bottom:1px solid rgba(201,168,76,.28)}
+#rob td{padding:6px 7px;vertical-align:top;border-bottom:1px solid rgba(85,170,221,.10);
+  color:#a8c2da;line-height:1.55}
+#rob td.q{color:#dbe9f7}
+#rob td.a{color:#8a6d2e;white-space:nowrap}
+#rob tr.key td.q{color:#ffcf8a}
+#rob .cls{position:absolute;top:12px;right:14px;cursor:pointer;color:#5f7794;font-size:16px}
+#rob .cls:hover{color:#cfe8fa}
+
+/* ---------- 摆角条 ---------- */
+.bar{height:5px;background:rgba(255,255,255,.07);border-radius:3px;margin:3px 0 7px;overflow:hidden}
+.bar i{display:block;height:100%;width:0%;border-radius:3px;transition:width .08s linear}
+.bar.b1 i{background:#ff9a3c}.bar.b2 i{background:#44ff88}.bar.b3 i{background:#44aaff}
+.seg{display:flex;align-items:center;gap:6px;font-size:11px;color:#8fa8c2}
+.dot{width:8px;height:8px;border-radius:2px;flex:none}
+
+/* ---------- 图表 ---------- */
+/* 高度随视口收缩：矮屏上右列（图例＋曲线）才不会顶到右上的状态面板 */
+#chart canvas{width:100%;height:clamp(104px,16vh,150px);display:block;
+  border-radius:2px;background:rgba(0,0,0,.28)}
+
+/* ---------- 底部控制条 ---------- */
+#ctl{position:fixed;bottom:0;left:0;right:0;z-index:20;padding:10px 16px 12px;
+  background:linear-gradient(0deg,rgba(3,10,20,.96),rgba(3,10,20,.55));
+  border-top:1px solid rgba(85,170,221,.16);
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.btn{font-size:11.5px;padding:6px 13px;border-radius:3px;cursor:pointer;white-space:nowrap;
+  border:1px solid rgba(85,170,221,.26);background:rgba(85,170,221,.07);color:#8fb8d8;
+  transition:all .15s;user-select:none}
+.btn:hover{background:rgba(85,170,221,.16);color:#cfe8fa}
+.btn.on{background:rgba(201,168,76,.16);border-color:rgba(201,168,76,.55);color:#e6c974}
+.grp{display:flex;gap:6px;align-items:center}
+.grp .lb{font-size:10.5px;color:#4f6480;letter-spacing:1px;margin-right:2px}
+#ageWrap{display:flex;align-items:center;gap:10px;min-width:290px}
+#age{-webkit-appearance:none;appearance:none;width:190px;height:3px;border-radius:2px;
+  background:linear-gradient(90deg,#2f6f9e,#C9A84C,#B02525);outline:none}
+#age::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;
+  background:#e6eef7;border:2px solid #55aadd;cursor:pointer}
+#ageVal{font-size:12px;color:#e6c974;min-width:96px;font-variant-numeric:tabular-nums}
+.divv{width:1px;height:22px;background:rgba(85,170,221,.16)}
+
+#loading{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;
+  background:#030a14;color:#55aadd;font-size:13px;letter-spacing:2px}
+.hide{display:none!important}
+#foot{position:fixed;left:16px;bottom:70px;z-index:14;font-size:10px;color:#33455c;letter-spacing:.5px}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="loading">正在装载罐内工况模型…</div>
+
+<div id="topbar">
+  <h1 data-en="Floating Adaptive Shaped Pusher · In-Retort Simulation">浮动自适应成形推头 · 罐内工况仿真</h1>
+  <span class="sub" data-en="Jingfu Coal Chemical · Pidgeon-process horizontal retort">京府煤化 · 皮江法卧式还原罐</span>
+  <span class="spacer"></span>
+  <span class="tag lang" id="bLang">EN</span>
+  <span class="tag ver" data-en="WinUp v2.2 · 4-stage charging">WinUp v2.2 · 四段装填</span>
+  <span class="tag warn" id="cfTag" data-en="INTERNAL · not to be circulated before patent filing">内部资料 · 专利递交前不外发</span>
+</div>
+
+<!-- 左侧参数 -->
+<div class="panel foldable" id="info">
+  <h3 data-en="RETORT · BRIQUETTE · SHOVEL (customer measured)">罐 体 · 球 团 · 铲 头（客户实测）</h3>
+  <div class="row cust"><span class="k" data-en="Bore length">罐膛长度</span><span class="v">3 200 mm</span></div>
+  <div class="row cust"><span class="k" data-en="Bore diameter">罐膛内径</span><span class="v">Ø280 – 290 mm</span></div>
+  <div class="row"><span class="k" data-en="Wall / OD">壁厚 / 外径</span><span class="v">45 / 380 mm</span></div>
+  <div class="row"><span class="k" data-en="Material">材质</span><span class="v">ZG35Cr24Ni7SiN</span></div>
+  <div class="row cust"><span class="k" data-en="Furnace temp.">炉温</span><span class="v hot">1 265 – 1 285 ℃</span></div>
+  <div class="row"><span class="k" data-en="Min. cold bore">冷态最小内径</span><span class="v" data-en="270 mm (zero ovality)">270 mm（椭圆度 0）</span></div>
+  <div class="row cust" style="margin-top:5px"><span class="k" data-en="Briquette (peach-pit)">球团（桃核型）</span><span class="v">30×28×18–23</span></div>
+  <div class="row"><span class="k" data-en="Bulk density">堆积密度</span><span class="v">1.25 t/m³</span></div>
+  <div class="row cust"><span class="k" data-en="Charge per retort">单罐装料</span><span class="v lit">200 kg / 4 <span data-en="stages">段</span></span></div>
+  <div class="row"><span class="k" data-en="Charge per stage">单段装填</span><span class="v lit">50 kg ≈ <span id="nBriq">—</span> <span data-en="pcs">颗</span></span></div>
+  <div class="row"><span class="k" data-en="Bed height (deep→mouth)">料床高 深→口</span><span class="v lit"><span id="vBedY">—</span> mm</span></div>
+  <div class="row"><span class="k" data-en="Top channel (deep→mouth)">顶部通道 深→口</span><span class="v"><span id="vChan">—</span> cm²</span></div>
+  <div class="note" style="color:#5f7794" data-en="4 × 50 kg = 0.160 m³ → <b style='color:#8fb8d8'>81.2% of the bore volume</b>. The bed is <b style='color:#8fb8d8'>stepped</b>, falling from the closed end towards the mouth, and the four charges <b style='color:#8fb8d8'>fill the full 3 200 mm</b> — the top channel runs the whole length and widens towards the mouth (tech deck P10). <br><b style='color:#e07070'>⚠ Bed heights on the P10 drawing are indicative (they scale to ~136 kg); these are re-derived from mass conservation at 200 kg, so the bed sits higher than the drawing.</b><br><b style='color:#8fb8d8'>The bed is lifted by the shovel face, rolls up the 13.3° ramp, is caught by the lip and tumbles forward — it rolls, it is not squeezed.</b>">4×50kg=0.160m³ → <b style="color:#8fb8d8">占罐膛容积 81.2%</b>。料床呈<b style="color:#8fb8d8">阶梯状</b>自罐底向罐口递减，
+  四段<b style="color:#8fb8d8">铺满 3 200mm</b>，顶部通道沿全长贯通、越靠罐口越大（技术版 P10）。<br>
+  <b style="color:#e07070">⚠ P10 图上的料床高度是示意画的（按图量约 136kg），此处按 200kg 物料守恒重算，料比图上高。</b><br>
+  <b style="color:#8fb8d8">料被铲面托起、沿 13.3° 斜坡向上滚，到顶被钩兜住再向前翻落——
+  滚着走，不是被挤着走。</b></div>
+
+  <h3 class="sub2" style="margin-top:11px" data-en="4-STAGE CHARGING &ldquo;DENSE IN, LOOSE OUT&rdquo;">四 段 装 填 · 里 实 口 松</h3>
+  <div class="row"><span class="k" data-en="Bed basis">料床口径</span><span class="v lit" id="vMode">阶梯料床 · PPT P10</span></div>
+  <div class="row"><span class="k" data-en="Length per stage">各段料长 mm</span><span class="v lit" id="vSegL">—</span></div>
+  <div class="row"><span class="k" data-en="Stroke 1 / 2">行程 第 1 / 2 段</span><span class="v" id="vStroke12">—</span></div>
+  <div class="row"><span class="k" data-en="Stroke 3 / 4">行程 第 3 / 4 段</span><span class="v" id="vStroke34">—</span></div>
+  <div class="row"><span class="k" data-en="Clear at mouth">罐口余留</span><span class="v lit"><span id="vMouth">—</span> mm</span></div>
+  <div class="row"><span class="k" data-en="Travel per retort">往返累计</span><span class="v"><span id="vTotal">—</span> mm</span></div>
+  <div class="note" data-en="Each charge is a fixed <b>50 kg</b> (tech deck P04) at as-poured density 1 250 kg/m³ throughout — <b style='color:#8fb8d8'>no compaction anywhere</b>. &ldquo;Dense in, loose out&rdquo; is realised by <b style='color:#8fb8d8'>bed height</b>, not by density: <b style='color:#8fb8d8'>&ldquo;dense in&rdquo; = the inner bed sits high (narrow top channel); &ldquo;loose out&rdquo; = the bed towards the mouth sits low, leaving a wide channel.</b><br><b style='color:#8fb8d8'>⭐ This removes a contradiction:</b> the design is sold on the shaped head making briquettes tumble <b>rather than</b> compacting them (P07) — reading &ldquo;dense in&rdquo; as compaction would have the same head doing both. It also keeps compaction force out of the drive end, so the force trace stays a clean reading of retort deflection. <br><b style='color:#e07070'>⚠ The four PLC numbers are not in the deck; the stop positions here are derived, to be calibrated on site.</b>">
+  每段恒 <b>50 kg</b>（技术版 P04），全程自由堆积密度 1 250 kg/m³，<b style="color:#8fb8d8">任何一段都不压实</b>。
+  「里实口松」靠<b style="color:#8fb8d8">料床高度</b>实现，不是靠密度：<b style="color:#8fb8d8">「里实」= 里段料床高、顶部通道窄；「口松」= 罐口段料床低、通道大。</b><br>
+  <b style="color:#8fb8d8">⭐ 这样解掉了一处自相矛盾：</b>方案卖点是成形推头让团块翻折、<b>而不是</b>压实挤碎（P07），
+  若把「里实」理解成压实，等于同一个推头一边不压一边压。同时压实力不再出现在驱动端，推力曲线仍是罐体变形的干净读数。<br>
+  <b style="color:#e07070">⚠ PPT 里没有给那四个数，此处停位为反算值，待现场标定。</b></div>
+
+  <h3 class="sub2" style="margin-top:11px" data-en="SHOVEL GEOMETRY (our back-calculation)">铲 头 几 何（我方反推）</h3>
+  <div class="row"><span class="k" data-en="Ramp angle">铲面斜坡角</span><span class="v lit">13.3°</span></div>
+  <div class="row"><span class="k" data-en="Ramp / body length">斜坡长 / 铲体总长</span><span class="v">410 / 455 mm</span></div>
+  <div class="row"><span class="k" data-en="Half-width / cap height">断面半宽 / 帽高</span><span class="v">132 / 66 mm</span></div>
+  <div class="row"><span class="k" data-en="Clearance to wall">与罐壁单边间隙</span><span class="v" data-en="8 mm per side">8 mm</span></div>
+  <div class="row"><span class="k" data-en="Lip free height">翻卷钩自由高</span><span class="v hot"><span id="lipFree">—</span> mm</span></div>
+  <div class="row"><span class="k" data-en="Lip clearance">钩顶余隙</span><span class="v lit" data-en="5 mm (bore top 140)">5 mm（罐膛顶 140）</span></div>
+  <div class="note" data-en="Section and ramp rebuilt from the <b>shape ratios</b> in Rob's CAD (ramp 1005:238 px → 13.3°; cap 313/625), scaled to the measured bore. <br>Lip top at 135 mm: <b style='color:#8fb8d8'>5 mm below the bore top</b> — <b style='color:#8fb8d8'>computed result: the floats do not touch the wall at all for the first 58 heats</b>, so zero wear and zero added force on a new retort. <br><b style='color:#e07070'>⚠ Scaling the CAD pixel ratio instead gives a 236 mm lip, which would ride against the wall permanently — not credible. The real dimension must come from Rob (see Open Points #1).</b>">断面与斜坡按 Rob CAD <b>形状比例</b>还原（斜坡 1005:238px → 13.3°；帽高 313/625），
+  整体按实测罐径缩放。<br>
+  钩顶 135mm：<b style="color:#8fb8d8">低于罐膛顶 5mm</b>
+  —— <b style="color:#8fb8d8">跑数结果：前 58 炉浮动机构全程不接触罐壁</b>，新罐期零磨损、零附加推力。<br>
+  <b style="color:#e07070">⚠ 阶梯料床下新出现的干涉：</b>第 1 段料床顶 121mm，钩顶 135mm，<b>只差 14mm</b>。
+  回抽时若罐顶已下垂把钩压低，钩会犁进刚装好的料里 —— v2 料面只有 80mm 时不存在这个问题。已列入待确认。<br>
+  <b style="color:#e07070">⚠ 若照 CAD 像素比例，钩会高达 236mm、常态就顶着罐壁走，不合理。
+  钩的真实尺寸必须问 Rob（见「待 Rob 确认」第 1 条）。</b></div>
+</div>
+
+<!-- 右上状态 -->
+<div class="panel" id="status">
+  <h3 data-en="LIVE STATUS">实 时 状 态</h3>
+  <div class="row"><span class="k" data-en="Charge stage">装填段</span><span class="v lit" id="sSeg">第 1 / 4 段</span></div>
+  <div class="row"><span class="k" data-en="Loaded in retort">罐内已装填</span><span class="v lit" id="sMass">0 kg</span></div>
+  <div class="row"><span class="k" data-en="Phase">动作阶段</span><span class="v lit" id="sPhase">推头伸入</span></div>
+  <div class="row"><span class="k" data-en="Stroke / this stage">推进行程 / 本段</span><span class="v" id="sX">0.00 / 2.62 m</span></div>
+  <div class="row"><span class="k" data-en="Bore sag (here)">罐膛下垂（该处）</span><span class="v hot" id="sSag">0.0 mm</span></div>
+  <div class="row" id="rEnv"><span class="k" data-en="Total float displacement">浮动位移合计</span><span class="v lit" id="sEnv">0.0 mm</span></div>
+  <div class="row" id="rFrc"><span class="k" data-en="Push force (indicative)">推料力（示意）</span><span class="v" id="sFrc" style="color:#e6c974">0 N</span></div>
+  <!-- ⛔ 三段浮动的摆角 = 专利交底书 A5 的结构分段，客户版必须整块隐藏（id 供 setMode 用） -->
+  <div id="rSwing" style="margin-top:9px">
+    <div class="seg"><span class="dot" style="background:#ff9a3c"></span>② Floating Tumble
+      <span style="margin-left:auto;color:#bcd8f0" id="a2">0.0°</span></div>
+    <div class="bar b1"><i id="p2"></i></div>
+    <div class="seg"><span class="dot" style="background:#44ff88"></span>③ LH Float
+      <span style="margin-left:auto;color:#bcd8f0" id="a3">0.0°</span></div>
+    <div class="bar b2"><i id="p3"></i></div>
+    <div class="seg"><span class="dot" style="background:#44aaff"></span>④ RH Float
+      <span style="margin-left:auto;color:#bcd8f0" id="a4">0.0°</span></div>
+    <div class="bar b3"><i id="p4"></i></div>
+  </div>
+  <div class="row" style="margin-top:4px"><span class="k" data-en="Verdict">通过判定</span><span class="v" id="sPass" style="color:#44ff88">自适应通过 · 未卡阻</span></div>
+</div>
+
+<!-- 右下一列：图例 + 曲线（内部版）。
+     用 flex 竖排，不再各自 position:fixed —— 图例原本钉在左下，挪到右侧后
+     会正好压在曲线上（曲线实高约 272px，比原先给它留的位置大得多）。 -->
+<div id="rightcol">
+  <div class="panel foldable" id="legend">
+    <h3 data-en="STRUCTURE (per Rob's CAD part names)">结 构 分 段（对应 Rob CAD 标号）</h3>
+    <div class="seg" style="margin:3px 0"><span class="dot" style="background:#9fb4c8"></span><span data-en="① Centre Section">① 中心段 Centre Section</span></div>
+    <div class="seg" style="margin:3px 0"><span class="dot" style="background:#ff9a3c"></span><span data-en="② Floating Tumble">② 翻卷段 Floating Tumble</span></div>
+    <div class="seg" style="margin:3px 0"><span class="dot" style="background:#44ff88"></span><span data-en="③ LH Float">③ 左浮动段 LH Float</span></div>
+    <div class="seg" style="margin:3px 0"><span class="dot" style="background:#44aaff"></span><span data-en="④ RH Float">④ 右浮动段 RH Float</span></div>
+    <div class="seg" style="margin:3px 0"><span class="dot" style="background:#C9A84C"></span>⑤ Retaining / ⑥ Resistance Spring</div>
+    <div class="note" data-en="<b style='color:#8fb8d8'>The lip on ② lets the briquettes tumble over rather than be squeezed through — this is the key to reducing breakage.</b><br>Once pressed down by the bore top, the lip lies flat and forms a low roof over the 13.3° ramp; briquettes climbing the ramp meet it and are turned over.<br><b>However far it is pressed down, that is where the bore top is.</b>"><b style="color:#8fb8d8">② 的翻卷钩让团块"tumble"翻滚过去，而不是被硬挤——这是降低破碎的关键。</b><br>
+    钩被罐顶压倒后，正好趴成覆盖 13.3° 缓坡的顶棚，团块爬上来撞到它被引导翻滚。<br>
+    <b>它被压下多少，罐顶就在哪里。</b></div>
+  </div>
+  <!-- 右下曲线（内部版） -->
+  <div class="panel foldable" id="chart">
+    <h3 data-en="FLOAT DISPLACEMENT / PUSH FORCE — vs. STROKE">浮 动 位 移 ／ 推 料 力 — 推 进 行 程</h3>
+    <canvas id="cchart" width="620" height="300"></canvas>
+    <div class="note" id="chartNote" data-en="<span style='color:#55ccff'>━</span> Float displacement (left axis, mm; heavy = current retort age, faint = reference ages) <span style='color:#e6c974'>╌</span> Push force (right axis, N, <span class='est'>indicative model</span>)<br><b style='color:#8a6d2e'>The float curve is the hot-state longitudinal bore profile.</b> <b style='color:#8fb8d8'>Both curves have the same shape — force and float displacement are two independent readings of the same deformation and can cross-check each other.</b>">
+    <span style="color:#55ccff">━</span> 浮动位移（左轴 mm，粗线＝当前罐龄，淡线＝对照罐龄）
+    <span style="color:#e6c974">╌</span> 推料力（右轴 N，<span class="est">示意模型</span>）<br>
+    <b style="color:#8a6d2e">浮动曲线即热态罐膛纵向轮廓。</b>
+    <b style="color:#8fb8d8">两条线同形——推力与浮动量是同一个变形量的两个独立观测，可互为校验。</b></div>
+  </div>
+</div>
+
+<!-- 待 Rob 确认（默认隐藏，发 Rob 时打开） -->
+<div class="panel hide" id="rob">
+  <span class="cls" id="robCls">✕</span>
+  <h2>Open Points — Floating Retort Shovel</h2>
+  <div class="lead">This simulation rebuilds the shovel from the <b>shape ratios</b> measured off the
+  <i>Floating Retort Shovel</i> slides and <i>The Floating Shovel_V2.dwg</i> (the DWG carries no dimensions),
+  scaled to the customer's measured bore. Every figure below marked <span class="est">assumed</span>
+  is our back-calculation from physical constraints, <b>not</b> your number.
+  Please correct them — the model updates directly from these values.</div>
+  <table>
+    <tr><th style="width:26px">#</th><th>Question</th><th style="width:150px">Our assumption</th></tr>
+    <tr class="key"><td>0</td><td class="q"><b>&ldquo;Dense in, loose out&rdquo; (里实口松) — confirm it is a matter of bed height, not density?</b>
+      The 15 Jul technical deck (P05 ③) promises to turn it into <i>four numbers in the PLC</i> + per-charge
+      weighing, but those four numbers are not in the deck.<br>
+      We first read it as <i>density</i> (compact the inner charges) — which capped the adjustable range at
+      6.7% and, worse, contradicted the anti-breakage claim the shovel exists to support (P07).
+      <b>Reading it as bed height removes the contradiction:</b> &ldquo;dense in&rdquo; = the inner bed sits
+      high (narrow top channel), &ldquo;loose out&rdquo; = the bed towards the mouth sits low (wide channel),
+      with density constant at as-poured 1 250 kg/m³ and <b>no compaction anywhere</b>. It also keeps
+      compaction force out of the drive end, so the force trace stays a clean reading of retort deflection.
+      This matches the stepped bed drawn on P10.</td>
+      <td class="a">bed height,<br>no compaction<br><span class="est">our working basis</span></td></tr>
+    <tr class="key"><td>0b</td><td class="q"><b>⚠ P10 contradicts itself — which half is right?</b>
+      The <b>drawing</b> shows four charges filling the full 3 200 mm with no gap. The <b>text</b> says
+      &ldquo;stage 4 heaps at the same stop position as stage 3&rdquo;. These cannot both hold: if stage 4
+      stops where stage 3 does, the material can only heap from ~1 350 mm towards the mouth and the first
+      ~800 mm of the bore is left empty — contradicting the drawing.<br>
+      <b>We modelled the drawing</b> (full fill), because it is what closes against the 200 kg charge:
+      4 × 50 kg = 0.160 m³ = 81.2% of the bore volume. Derived stops are
+      <b>2 701 / 2 139 / 1 348 / 492 mm</b>, i.e. successive gaps of 562 / 791 / 856 mm —
+      stage 3→4 is the <i>largest</i> gap, not &ldquo;same position&rdquo;.<br>
+      Also note the bed heights drawn on P10 scale to only ~136 kg; ours are re-derived from mass
+      conservation at 200 kg, so the bed sits higher than the drawing.</td>
+      <td class="a">drawing (full fill)<br><span class="est">needs your call</span></td></tr>
+    <tr class="key"><td>1</td><td class="q">What is the <b>actual free height of the tumble lip</b>?
+      Scaling the CAD pixel ratio gives 236 mm — above the 140 mm bore top, i.e. the lip would ride
+      against the wall permanently and wear from day one. We instead set it just below the bore.
+      <b>These two numbers differ by ~75%; this is the single largest uncertainty in the model.</b></td>
+      <td class="a">135 mm<br><span class="est">assumed</span><br>(5 mm clearance)</td></tr>
+    <tr class="key"><td>2</td><td class="q">What are the <b>LH/RH floats actually making way for</b> — overall ovalisation,
+      or local build-up / accretion / an uneven floor? The spring choice is opposite in the two cases
+      (soft + long travel vs. stiff + short travel).
+      <b>Note: when a retort flattens, the clearance at the lower sides <i>increases</i></b> —
+      which suggests the answer is local build-up.</td>
+      <td class="a">local build-up<br><span class="est">assumed</span></td></tr>
+    <tr><td>3</td><td class="q">Design <b>swing range</b> of each floating section (mechanical stops)?</td>
+      <td class="a">② 50° / ③④ 10°<br><span class="est">assumed</span></td></tr>
+    <tr><td>4</td><td class="q"><b>Retaining / Resistance Spring</b> — type, rate, preload?</td>
+      <td class="a">12 000 / 8 000 N/m<br><span class="est">assumed</span></td></tr>
+    <tr><td>5</td><td class="q"><b>Design clearance</b> between shovel body and bore wall?</td>
+      <td class="a">8 mm per side<br>(body Ø264 in Ø280)</td></tr>
+    <tr class="key"><td>6</td><td class="q">At what swing angle does the lip <b>stop retaining the charge</b>?
+      If such an angle exists, the anti-breakage function fails <b>before</b> the shovel fails to reach position —
+      that is an earlier change-out warning than "cannot reach depth", and it is readable from the same
+      float displacement signal.</td>
+      <td class="a">not modelled<br><span class="est">need your view</span></td></tr>
+    <tr><td>7</td><td class="q">Can <b>position feedback</b> be fitted to the floating sections, and to what resolution?
+      (Still open from the Black Box product definition, §9 item 2.)</td>
+      <td class="a">—</td></tr>
+    <tr class="key"><td>8</td><td class="q"><b>Push force.</b> Your slides state the pushing force will be measured and controlled.
+      What is the design/limit value, and where is it measured? Our indicative model gives
+      530 N on a new retort rising to 745 N at 300 heats — the entire 216 N increase comes from the
+      floating sections being pressed. <b>If that holds, force and float displacement are two independent
+      readings of the same deformation.</b></td>
+      <td class="a">530 → 745 N<br><span class="est">indicative</span></td></tr>
+    <tr><td>9</td><td class="q"><b>Shovel + front chain equivalent mass</b>, for the friction term above?</td>
+      <td class="a">35 kg<br><span class="est">assumed</span></td></tr>
+    <tr><td>10</td><td class="q">Stage 4 needs only <b>492 mm</b> of stroke, barely more than the
+      <b>455 mm</b> shovel body. Is the last charge really meant to sit that close to the mouth, or is the
+      split not 4 × 50 kg in practice?</td>
+      <td class="a">4 × 50 kg<br>from your slides</td></tr>
+    <tr class="key"><td>11</td><td class="q"><b>⚠ New interference the stepped bed creates: will the tumble lip
+      plough into material already charged?</b>
+      With the bed stepped for 200 kg, stage 1 sits at <b>121 mm</b> above centre while the lip top is at
+      <b>135 mm</b> — only <b>14 mm</b> apart. On the earlier flat-bed model the bed was at 80 mm and the gap
+      was 55 mm, so this did not arise. Once the crown has sagged enough to push the lip down, the lip will
+      drag through the charge on the way out. Two consequences to check: extra retraction load, and
+      briquette breakage at exactly the spot the design exists to protect.</td>
+      <td class="a">14 mm gap<br><span class="est">needs your call</span></td></tr>
+  </table>
+  <div class="lead" style="margin:12px 0 0">Measured inputs come from the customer's
+  <i>Retort &amp; Raking Machine Key Data</i> (28 Jul, on-site). Hot-state deformation is
+  <b>not</b> measured — the customer states it "cannot be measured under operating conditions",
+  and cold-state residual is only ~5 mm on radius. All deformation figures in this model are illustrative.</div>
+</div>
+
+<div id="foot" data-en="WinUp Intelligent Manufacturing · Lean first · Automation where it pays · ROI-driven">WinUp 维恩普智能制造 · 精益先行 · 自动化赋能 · ROI 导向</div>
+
+<!-- 底部控制 -->
+<div id="ctl">
+  <div class="grp"><span class="lb" data-en="CAMERA">镜头</span>
+    <span class="btn on" data-cam="0" data-en="Overview">全景剖视</span>
+    <span class="btn" data-cam="1" data-en="Mouth">罐口</span>
+    <span class="btn" data-cam="2" data-en="Follow">推头跟随</span>
+    <span class="btn" data-cam="3" data-en="Head-on">正视断面</span>
+    <span class="btn" data-cam="4" data-en="Top">俯视</span>
+  </div>
+  <div class="divv"></div>
+  <div id="ageWrap"><span class="lb" data-en="AGE">罐龄</span>
+    <input type="range" id="age" min="0" max="300" step="1" value="0">
+    <span id="ageVal">新罐 · 0 炉</span>
+  </div>
+  <div class="divv"></div>
+  <div class="grp"><span class="lb" data-en="CHARGING">装填</span>
+    <span class="btn on" data-mode="step" data-en="Stepped bed (P10)">阶梯料床 · P10</span>
+    <span class="btn" data-mode="flat" data-en="Flat bed (v2, wrong)">等高料床 · 对照</span>
+  </div>
+  <div class="divv"></div>
+  <div class="grp">
+    <span class="btn on" id="bClip" data-en="Section retort">剖切罐体</span>
+    <span class="btn" id="bHClip" data-en="Section shovel">铲头剖视</span>
+    <span class="btn on" id="bLabel" data-en="Part labels">结构标号</span>
+    <span class="btn on" id="bBriq" data-en="Briquettes">团块</span>
+    <span class="btn on" id="bSeq">四段连续</span>
+    <span class="btn on" id="bPlay">运行 ‖</span>
+  </div>
+  <div class="divv"></div>
+  <div class="grp"><span class="lb" data-en="VERSION">版本</span>
+    <span class="btn on" id="bInt" data-en="Internal / patent">内部 / 专利版</span>
+    <span class="btn" id="bCli" data-en="Customer demo">客户演示版</span>
+    <span class="btn" id="bRob" data-en="Open points ⑬">待 Rob 确认 ⑬</span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+/* =========================================================================
+   京府煤化 · 浮动自适应成形推头 罐内工况仿真   WinUp v2
+   —— 结构定义对应专利交底书 A5：中心段① + 浮动翻转段② + 左③ / 右④ 浮动段
+      + 自找平弹簧⑤ / 复位弹簧⑥，被动摆动自适应变形罐膛。
+   —— 所有变形量、浮动行程为示意值，待 Rob 给参数与 8-13 现场实测后回填。
+
+   ⭐ v2.2 修正（2026-08-05 晚，David 指出料的堆积形态不对）：
+   料床从「四段等高 80mm 的矩形块 + 罐口留 117mm 空 + 段间垂直断面」
+   改为「阶梯料床」——自罐底向罐口递减 261/236/220/203mm，四段铺满 3200mm，
+   顶部通道沿全长贯通（18→137 cm²），段间以 34° 休止角坡**叠瓦式**搭接。
+   依据技术版 PPT P10；绝对高度按 4×50kg=200kg 物料守恒重算（P10 图上只有约 136kg）。
+   连带结论：「里实口松」靠料床高度实现，全程不压实 —— 解掉了「卖点是不压实、
+   却要靠压实实现里实」这个自相矛盾。行程随之改为 2701/2139/1348/492 mm。
+   详见本文件内 recalcCharging 与 releaseBatch 的注释，以及待确认清单第 0b / 11 条。
+
+   v2 相对 v1 的变化（2026-08-05）：
+   ① 四段连续装填（v1 只演第一段）——行程由「本段料前沿须抵前一段料尾」反算。
+      （v2.2 已按阶梯料床重算，见上。）
+   ② 新增推料力示意模型与曲线（Rob PPT 明确写了推料力会被测量和控制）。
+      关键结论：推力增量全部来自浮动段被压紧 → 推力与浮动量互为独立观测。
+   ③ 曲线 Y 轴量程由 200mm 改为 80mm（实际最大 62mm，v1 曲线一直趴在底部）。
+   ④ 新增「待 Rob 确认」英文清单面板（13 条），假设值直接标在旁边。
+   ⑤ 修正 v1 若干陈旧注释（斜坡长/铲体总长/钩自由高，代码算出来的才是准的）。
+   ========================================================================= */
+
+/* ---------- 1. 基本参数（米）——尺寸全部取自客户《横罐扒渣机设备关键资料》实测 ---------- */
+const LEN   = 3.20;    // 罐膛内部有效长度（实测）
+const R0    = 0.140;   // 罐膛内半径（实测 内径 280–290，外径 380；370 罐为 275–280）
+const R0COLD= 0.135;   // 冷态最小内径 270mm（实测）——热态无测量手段
+const WALL  = 0.045;   // 壁厚（实测）
+/* --- 球团（实测）：桃核型 30×28×18–23，堆积密度 1.25 t/m³，370 罐正常装料约 200kg --- */
+const BR_L=0.030, BR_W=0.028, BR_H=0.0205;
+const BULK=1250, CHARGE=50;                       // kg/m³，每段装填量 kg（200÷4）
+const NSEG=4;                                     // 装填段数（Rob 方案：4 × 50kg = 200kg/罐）
+const BRV=Math.PI/6*BR_L*BR_W*BR_H;               // 单颗体积 ≈ 9.0 cm³
+const NB=Math.round(CHARGE/BULK*0.60/BRV);        // 单段颗数（孔隙率 40%）≈ 2662
+/* --- 阶梯料床（v3 修正）-------------------------------------------------------
+   技术版 PPT P10「四段定量装填，末段堆料、顶部留通道」：
+   料床顶自罐底向罐口**递减**，四段**铺满**整个 3200mm，顶部通道**沿全长贯通**、越靠罐口越大。
+
+   ⛔ v2 建错了：全长等高 80mm 的四个矩形块 + 罐口留 117mm 空档 + 段间垂直断面。
+      那等于把「顶部通道」理解成「罐口留一段空」，与 P10 图不符；
+      而且散料不可能立一面垂直墙 —— 每段卸完，浅端必然塌成 34° 休止角坡。
+
+   ⭐ 真实形态是**叠瓦式**，不是四个方块：后一段的料楔进前一段的坡里。
+      故每段用「水位 + 浅端坡脚」描述，深端由前一段已成形的廓形自然挡住。
+   ⚠ P10 图上的料床高度是示意画的（按图量约 136kg），本模型按 4×50kg=200kg 物料守恒重算，
+      画面上料会比 PPT 图看着满：填充率 81.2%。                                    */
+const TAN34=Math.tan(34*Math.PI/180);
+const PILE_V=CHARGE/BULK;                         // 一段料体积 0.040 m³
+/* 水位由「顶部通道断面 ∝ 距罐底距离」定（镁蒸汽沿途累积，通道内流速大致恒定），
+   比例系数二分求解，使第 4 段坡脚正好落在罐口。下面是解出的值，作初值用。 */
+let BEDY=[0.1213,0.0962,0.0795,0.0633];           // 各段水位（自圆心）
+let XSF =[2.3293,1.6076,0.8352,0.0000];           // 各段浅端坡脚（自罐口）
+/* 料并非全堆在铲头前方：铲面把料托起，铲头上方（斜坡与水位之间）本身就装着一部分料。
+   水位逐段降低 → 铲头上方装的比例逐段变小 → 前方料长逐段变大 → 每段都要单独算。 */
+let FRONTSTR=[0.35,0.35,0.35,0.35], FRONTL=[0.50,0.56,0.64,0.76], SLOPEL=[0.39,0.35,0.33,0.30];
+let SEGLS=[0.871,0.722,0.773,0.835], STROKES=[2.70,1.97,1.15,0.19], MOUTH_CLEAR=0;
+
+/* --- ⭐「里实口松」在阶梯料床下的解释（v3 修正）-------------------------------
+   技术版 PPT P05 ③：四段定量装填，「里实口松」变成 PLC 里的四个数 + 每段称重记录。
+   ⚠ 那四个数 PPT 里没有给。每段恒 50kg（P04 定量料仓 ≥400kg / 每段 50kg 定量）。
+
+   v2 把「里实口松」理解成**密度不同**（里段压实、口段松），并为此排了三档密度口径。
+   改成阶梯料床后，这个纠结自己消解了：
+       「里实」= 里段**水位高**（装得深、填得满，顶部通道窄）
+       「口松」= 口段**水位低**、顶部通道大
+   四段密度全程恒为自由堆积 1250 kg/m³，**根本不需要压实**。
+
+   ⭐ 这同时解掉了 v2 记录里那个自相矛盾：方案卖点是「成形推头让团块翻折，而不是被压实、
+     挤碎」（技术版 P07），却又要靠压实来实现「里实」—— 现在两者不再打架。
+     附带好处：压实力不再出现在驱动端，推力信号仍是罐体变形的干净读数。
+
+   保留一个「等高料床」对照档，用来直观看出 v2 错在哪。                            */
+const BED_MODES={
+  step:{name:'阶梯料床 · PPT P10', en:'Stepped bed · PPT P10'},
+  flat:{name:'等高料床 · v2 旧解（对照）', en:'Flat bed · v2 (comparison)'}
+};
+let bedMode='step';
+
+/* --- 双语（v2.1）：静态文案走 data-en 属性，动态文案走下面这张表 ------------
+   目的很实际——这个文件是要发给 Rob 的，他看不懂界面等于白做。            */
+let LANG='zh';
+const T={
+  zh:{
+    phase:['推头伸入 · 分段被动自适应','到位 · 顶部通道成形','回抽 · 料留罐内',
+           '退出 · 罐口待机','四段装满 · 200 kg / 罐'],
+    passLimit:'摆角到限位 · 建议报警转人工', passOK:'自适应通过 · 未卡阻', passFree:'无干涉 · 自由通过',
+    seg:(n,N)=>'第 '+n+' / '+N+' 段', segSingle:'第 1 段 · 单段循环',
+    ageNew:'新罐 · 0 炉', ageN:n=>'服役 '+n+' 炉', heats:'炉',
+    run:'运行 ‖', pause:'暂停 ▶', seq:'四段连续', single:'单段循环',
+    chartY:'浮动量 mm', chartX:'推进行程 m', chartF:'推料力 N'
+  },
+  en:{
+    phase:['Advancing · passive adaption','At position · top channel formed','Retracting · charge stays in',
+           'Withdrawn · waiting at mouth','4 charges in · 200 kg / retort'],
+    passLimit:'Swing at end stop · alarm, switch to manual', passOK:'Adapting · no jam', passFree:'No interference · free pass',
+    seg:(n,N)=>'Stage '+n+' / '+N, segSingle:'Stage 1 · single-stage loop',
+    ageNew:'New retort · 0 heats', ageN:n=>n+' heats in service', heats:' hts',
+    run:'Run ‖', pause:'Pause ▶', seq:'4 stages', single:'Single stage',
+    chartY:'Float mm', chartX:'Stroke m', chartF:'Force N'
+  }
+};
+const TX=()=>T[LANG];   // ⚠ 不能叫 t —— updateHead 里 t 是轴向比例，会被遮蔽
+/* --- 铲头几何：按 Rob《Floating Retort Shovel》CAD 实测比例还原 ---
+   侧视：铲面斜坡 13.3°（长 1005px / 升 238px），只升到断面总高的 49%，
+         其上为竖直挡板（推料面）；挡板顶接 Floating Tumble 的翻卷钩。
+   断面：下半圆（①+③④）+ 上半平顶拱帽（②），分界线在圆心高度。      */
+const RP    = 0.132;   // 铲体断面半宽 = 下半圆半径（罐膛 140 − 单边间隙 8mm）
+const CAPH  = 0.50*RP; // 帽高（CAD：313/625 ≈ 0.50）= 66mm
+const TOTH  = RP+CAPH; // 断面总高 198mm
+const SLOPE_R = 0.49;             // 斜坡顶端 / 断面总高
+const SLOPE_A = 13.3*Math.PI/180; // 斜坡角（CAD 实测）
+const PWEDGE= SLOPE_R*TOTH/Math.tan(SLOPE_A);  // 斜坡长 = 410mm
+const PBACK = 0.045;              // 竖直挡板段
+const PLEN  = PWEDGE+PBACK;       // 铲体总长 = 455mm
+const CAPU0 = PWEDGE-0.030;       // 帽的轴向起点
+const PHI_T = Math.PI/2;          // 帽 / 左右段 分界（水平）
+const PHI_S = 135*Math.PI/180;    // 左右段 / 中心段 分界（斜下 45°）
+/* 翻卷钩：竖直直段 → 90° 弯 → 水平前伸段（CAD 侧视的牧羊杖形） */
+/* ⚠ 按 CAD 像素比例，钩自由高会达到 236mm，远超罐膛顶 140mm —— 那意味着钩常态就顶着
+   罐壁走，浮动成了常态而非应急，不合理。故按物理约束反推：钩顶 135mm，
+   低于罐膛顶 5mm —— 正常不接触，罐顶下垂时才压到它。
+   ⚠ 阶梯料床下第 1 段料床顶 121mm，与钩顶只差 14mm，回抽时钩可能犁料（v2 料面 80mm 时没有）。
+   形状比例（直段:弯:水平）保持 CAD 关系，水平段加长以兜住料。真实尺寸待 Rob 确认。 */
+const LIP_TOP=0.135;
+const L1=0.045, R_LIP=0.024, L3=0.075, LIP_TH=0.010;
+const ARC=R_LIP*Math.PI/2, LIP_LEN=L1+ARC+L3;
+const LIP_X0=-PLEN+0.020, LIP_Y0=CAPH;
+const LIP_CX=LIP_X0+R_LIP, LIP_CY=LIP_Y0+L1;
+/* 钩 = 覆盖料堆的低顶棚：料沿 13.3° 缓坡滚上来撞到它 → 被兜住 → 向前翻落。
+   新罐时不碰罐壁（摆角 0）；罐顶下垂到 135mm 以下才开始压它 →
+   摆角本身就是「这只罐子顶部塌了多少」的直接读数。
+   ⭐ 跑数结论：按本模型的变形速率，第 58 炉才首次出现浮动动作 ——
+      前 58 炉 ②③④ 全程不接触罐壁，新罐期零磨损、零附加推力。 */
+
+/* --- 推料力示意模型（v2 新增）------------------------------------------
+   F = F1 料推移阻力 + F2 铲头自重摩擦 + F3 浮动段压紧附加摩擦
+   ⚠ 以下系数全部为示意值，Rob 未给过任何一个，8-13 现场亦未实测。
+   之所以要建这个模型：Rob PPT 原话「推料力会被测量和控制」——
+   若 F3 确实是唯一的变量项，则推力曲线与浮动位移曲线是同一个变形量的
+   两个独立观测，可互为交叉校验，这是 Black Box 的第二个数据来源。      */
+const GRAV=9.81;
+const MU_BP=0.50;    // 球团—罐壁 热态摩擦系数（示意）
+const KP=1.60;       // 散体被推时的被动土压放大系数（示意）
+const M_HEAD=35;     // 铲头 + 前端链节 等效质量 kg（示意，待 Rob）
+const MU_ST=0.40;    // 钢—罐壁（含结瘤面）摩擦系数（示意）
+const K_TOP=12000;   // ⑤ 自找平弹簧 等效刚度 N/m（示意，待 Rob）
+const K_SIDE=8000;   // ⑥ 复位弹簧 等效刚度 N/m（示意，待 Rob）
+const F_BASE=MU_BP*CHARGE*GRAV*KP + MU_ST*M_HEAD*GRAV;   // 392 + 137 = 530 N（恒定项）
+const FMAX_CHART=800;                                    // 曲线右轴上限 N
+
+/* 罐龄 → 变形（示意模型：两端支撑、中段最大 + 局部结瘤起伏） */
+function defo(age){
+  const k = age/300;
+  return {
+    /* ⚠ 客户实测只有冷态：最小内径 270（vs 280，即冷态残余仅 5mm 半径）、椭圆度为零。
+       热态「不具备测量条件」——以下热态变形量全部为示意，正是 Black Box 要去测的那组数。 */
+    sag : 0.022*Math.pow(k,1.30),   // 中段热态下垂 最大 22mm
+    ov  : 0.014*Math.pow(k,1.20),   // 竖直半轴收缩（椭圆化）最大 14mm
+    rip : 0.0080*Math.pow(k,1.20),  // 局部结瘤 / 内壁积料 最大 8mm
+    lb  : 0.024*k                   // 侧壁局部内缩幅值 最大 24mm
+  };
+}
+/* 轴向包络：两端支撑，中间最大 */
+const shp = t => Math.pow(Math.sin(Math.PI*Math.min(1,Math.max(0,t))),1.4);
+/* 局部起伏（固定种子，罐龄只改幅值 → 不同罐龄曲线可直接比对） */
+function ripple(t,phi,d){
+  if(d.rip<=0) return 0;
+  const s = 0.55*Math.sin(9.3*Math.PI*t+1.7)
+          + 0.30*Math.sin(23.1*Math.PI*t+0.6)
+          + 0.15*Math.sin(41.0*Math.PI*t+2.2);
+  const f = 0.45 + 0.30*Math.cos(2*phi+0.8) + 0.35*Math.abs(Math.sin(phi));
+  return d.rip*Math.max(0,s)*f;
+}
+/* 侧壁局部内缩：左右两侧相位错开——真实罐体变形本就不对称，
+   这样左右浮动段各摆各的，而不是刚性联动 */
+function lobe(t,d,side){
+  const ph = side>=0 ? 7.1*Math.PI*t+2.2 : 6.3*Math.PI*t+0.4;
+  return d.lb*Math.pow(Math.max(0,Math.sin(ph)),2)*shp(t);
+}
+/* 罐膛断面：t∈[0,1] 轴向比例，phi 从顶部起算 */
+function bore(t,phi,d){
+  const s  = shp(t);
+  const cy = -d.sag*s;                 // 中心线下移（热态下垂）
+  const a  =  R0 - d.ov*s;             // 竖直半轴（椭圆化收缩）
+  const sn = Math.sin(phi);
+  const b  =  R0 + d.ov*0.25*s - lobe(t,d,sn);   // 水平半轴（膨胀 + 局部内缩）
+  const rp = ripple(t,phi,d);
+  return { y: cy + (a-rp)*Math.cos(phi), z: (b-rp)*sn, cy:cy, a:a, b:b };
+}
+
+/* ---------- 2. 场景 ---------- */
+let scene,camera,renderer,controls,clipPlane;
+const cv=document.getElementById('cv');
+scene=new THREE.Scene();
+scene.background=new THREE.Color(0x030a14);
+scene.fog=new THREE.FogExp2(0x030a14,0.075);
+
+camera=new THREE.PerspectiveCamera(42,innerWidth/innerHeight,0.05,80);
+renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.localClippingEnabled=true;
+clipPlane=new THREE.Plane(new THREE.Vector3(0,0,-1),0.001);
+
+controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.target.set(1.5,0,0);
+
+scene.add(new THREE.AmbientLight(0x668cb0,0.55));
+const d1=new THREE.DirectionalLight(0xbfd8f0,0.85); d1.position.set(3,6,7); scene.add(d1);
+const d2=new THREE.DirectionalLight(0xff7a3c,0.45); d2.position.set(-4,-2,-3); scene.add(d2);
+for(let i=0;i<5;i++){
+  const pl=new THREE.PointLight(0xff5a1e,0.55,2.2);
+  pl.position.set(0.35+i*0.7,-0.02,0); scene.add(pl);
+}
+
+/* 工具 */
+/* ⚠ 场景无环境贴图，metalness 过高会让金属件渲染成近黑色 —— 一律压在 0.45 以内 */
+const BM=(c,r,m)=>new THREE.MeshStandardMaterial({color:c,roughness:r===undefined?0.65:r,
+  metalness:Math.min(0.45,m===undefined?0.35:m)});
+/* 品牌金件（销轴 / 弹簧）：低金属度 + 微自发光，暗场里也认得出是金色 */
+const GM=()=>new THREE.MeshStandardMaterial({color:0xC9A84C,roughness:0.42,metalness:0.35,
+  emissive:0x4a3a12,emissiveIntensity:1.0});
+function edges(mesh,color,op){
+  const e=new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry,25),
+    new THREE.LineBasicMaterial({color:color,transparent:true,opacity:op||0.5}));
+  mesh.add(e); return e;
+}
+
+/* ---------- 3. 罐体（内壁 + 外壁 + 剖切轮廓线） ---------- */
+const NA=140, NC=72;                 // 轴向 / 周向分段
+const gTank=new THREE.Group(); scene.add(gTank);
+let boreMesh,shellMesh,cutLine,mouthRing;
+
+function buildTank(age){
+  const d=defo(age);
+  if(boreMesh){ gTank.remove(boreMesh); boreMesh.geometry.dispose(); }
+  if(shellMesh){ gTank.remove(shellMesh); shellMesh.geometry.dispose(); }
+  if(cutLine){ gTank.remove(cutLine); cutLine.geometry.dispose(); }
+
+  /* --- 内壁：自发光红热 + 顶点伪光照 --- */
+  const pos=[],col=[],idx=[];
+  const c=new THREE.Color();
+  for(let i=0;i<=NA;i++){
+    const t=i/NA, x=t*LEN;
+    for(let j=0;j<=NC;j++){
+      const phi=j/NC*Math.PI*2;
+      const p=bore(t,phi,d);
+      pos.push(x,p.y,p.z);
+      /* 热色：深处更亮红热，罐口降温 */
+      const heat=0.42+0.58*Math.min(1,t*1.6);
+      /* 伪光照：朝上的面亮一点，看得出下垂 */
+      const lit=0.62+0.38*(0.5+0.5*Math.cos(phi));
+      c.setRGB(1.00*heat*lit, 0.32*heat*lit*0.95, 0.11*heat*lit*0.8);
+      col.push(c.r,c.g,c.b);
+    }
+  }
+  for(let i=0;i<NA;i++)for(let j=0;j<NC;j++){
+    const a=i*(NC+1)+j,b=a+NC+1;
+    idx.push(a,b,a+1, a+1,b,b+1);
+  }
+  const gb=new THREE.BufferGeometry();
+  gb.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  gb.setAttribute('color',new THREE.Float32BufferAttribute(col,3));
+  gb.setIndex(idx); gb.computeVertexNormals();
+  boreMesh=new THREE.Mesh(gb,new THREE.MeshBasicMaterial({
+    vertexColors:true,side:THREE.DoubleSide,clippingPlanes:[clipPlane]}));
+  gTank.add(boreMesh);
+
+  /* --- 外壁：暗钢 --- */
+  const pos2=[],idx2=[];
+  for(let i=0;i<=NA;i++){
+    const t=i/NA,x=t*LEN;
+    for(let j=0;j<=NC;j++){
+      const phi=j/NC*Math.PI*2;
+      const p=bore(t,phi,d);
+      const nx=Math.cos(phi),nz=Math.sin(phi);
+      pos2.push(x,p.y+WALL*nx,p.z+WALL*nz);
+    }
+  }
+  for(let i=0;i<NA;i++)for(let j=0;j<NC;j++){
+    const a=i*(NC+1)+j,b=a+NC+1;
+    idx2.push(a,a+1,b, a+1,b+1,b);
+  }
+  const gs=new THREE.BufferGeometry();
+  gs.setAttribute('position',new THREE.Float32BufferAttribute(pos2,3));
+  gs.setIndex(idx2); gs.computeVertexNormals();
+  shellMesh=new THREE.Mesh(gs,new THREE.MeshStandardMaterial({
+    color:0x27303c,roughness:0.85,metalness:0.40,side:THREE.DoubleSide,
+    clippingPlanes:[clipPlane]}));
+  gTank.add(shellMesh);
+
+  /* --- 剖切轮廓线（z=0 平面上的壁厚轮廓，品牌金） --- */
+  const lp=[];
+  for(const sgn of [1,-1]){          // 顶 / 底 两条
+    const phi = sgn>0?0:Math.PI;
+    for(let i=0;i<NA;i++){
+      const t1=i/NA,t2=(i+1)/NA;
+      const p1=bore(t1,phi,d),p2=bore(t2,phi,d);
+      lp.push(t1*LEN,p1.y,0, t2*LEN,p2.y,0);                       // 内壁线
+      lp.push(t1*LEN,p1.y+WALL*Math.cos(phi),0, t2*LEN,p2.y+WALL*Math.cos(phi),0); // 外壁线
+    }
+  }
+  cutLine=new THREE.LineSegments(new THREE.BufferGeometry().setAttribute(
+    'position',new THREE.Float32BufferAttribute(lp,3)),
+    new THREE.LineBasicMaterial({color:0xC9A84C,transparent:true,opacity:0.75}));
+  gTank.add(cutLine);
+}
+buildTank(0);
+
+/* 罐口法兰 + 炉墙 */
+mouthRing=new THREE.Mesh(new THREE.TorusGeometry(R0+WALL*0.5,0.028,10,48),BM(0x3a4552,0.6,0.6));
+mouthRing.rotation.y=Math.PI/2; mouthRing.position.x=-0.01; gTank.add(mouthRing);
+/* ⛔ v2.2 修：炉墙原来是一整块实心 Box，把罐口整个糊死了 —— 而罐口是**一直敞开**的，
+   铲头就是从这里进出（铲体 x∈[−455,0]mm，之前每一帧都在穿模穿过这堵墙）。
+   现在用带孔的 Shape 拉伸：主罐口 + 四个相邻罐口全部真开孔。
+   ⚠ 孔要比法兰外径再大一点，否则法兰环会嵌在墙里看不见。 */
+const NEI=[[0.715,0.355],[-0.715,0.355],[0.715,-0.355],[-0.715,-0.355]];  // 相邻罐口 (z,y)
+const furnMats=[];                                // 炉墙一族的材质，跟罐体一起participate剖切
+{
+  const HR=R0+WALL*0.5+0.030;                     // 孔半径
+  /* ⚠ 尺寸：原来是 2.5×2.1m 的大板，而罐膛才 Ø0.29m —— 板比罐大八倍，
+     默认镜头正对板面时整个画面就是一堵墙，罐口那个孔小到看不见。
+     缩到刚好包住 2×2 罐口阵列（相邻罐口中心距 z±715 / y±355）。 */
+  const wsh=new THREE.Shape();
+  wsh.moveTo(-0.95,-0.62); wsh.lineTo(0.95,-0.62); wsh.lineTo(0.95,0.62);
+  wsh.lineTo(-0.95,0.62); wsh.closePath();
+  const punch=(cz,cy)=>{ const h=new THREE.Path();
+    h.absarc(cz,cy,HR,0,Math.PI*2,true); wsh.holes.push(h); };
+  punch(0,0);                                     // ⭐ 主罐口 —— 之前就是缺了这一刀
+  for(const [dz,dy] of NEI) punch(dz,dy);
+  /* Shape 在局部 xy 平面、沿局部 z 拉伸；绕 y 转 90° 后局部 z → 世界 x，局部 x → 世界 −z。
+     孔位左右对称，所以 z 取负号不影响。 */
+  const wm=BM(0x161d27,0.95,0.05);
+  const wall=new THREE.Mesh(new THREE.ExtrudeGeometry(wsh,{depth:0.12,bevelEnabled:false}),wm);
+  wall.rotation.y=Math.PI/2; wall.position.set(-0.15,0,0); scene.add(wall);
+  furnMats.push(wm);
+}
+/* 相邻罐口（实测：同排罐口中心距 710–720，上下排 350–360）：法兰环 + 洞里的黑暗。
+   黑片要放在墙**后面**（原来放在 x=+0.02，等于贴在墙的外侧，是错的）。 */
+for(const [dz,dy] of NEI){
+  const rm=BM(0x2c343f,0.7,0.5);
+  const r=new THREE.Mesh(new THREE.TorusGeometry(R0+WALL*0.5,0.026,8,32),rm);
+  r.rotation.y=Math.PI/2; r.position.set(-0.02,dy,dz); scene.add(r);
+  const gm=new THREE.MeshBasicMaterial({color:0x0a0200});
+  const g=new THREE.Mesh(new THREE.CircleGeometry(R0+WALL*0.4,28),gm);
+  g.rotation.y=Math.PI/2; g.position.set(-0.17,dy,dz); scene.add(g);
+  furnMats.push(rm,gm);
+}
+/* ⭐ 炉墙必须跟罐体一起被剖切面切开 —— 罐体剖了、墙没剖，从剖视角度看过去
+   就是一堵完整的墙糊在罐口前面，这正是「罐口看着是密封的」的直接原因。 */
+furnMats.forEach(m=>{m.clippingPlanes=[clipPlane];m.needsUpdate=true;});
+
+/* ---------- 4. 铲头（按 Rob CAD：①Centre Section ②Floating Tumble ③④LH/RH Float） ---------- */
+/* 局部坐标：前尖 x=0，后端 x=-PLEN。
+   高度沿轴向按「斜坡 13.3° → 竖直挡板」两段变化；宽度几乎不收（铲子是宽刃，不是锥子） */
+function hScale(u){
+  return u<=PWEDGE ? SLOPE_R*(u/PWEDGE)
+                   : SLOPE_R+(1-SLOPE_R)*Math.min(1,(u-PWEDGE)/PBACK);
+}
+function wScale(u){ return 0.72+0.28*Math.min(1,u/(PWEDGE*0.85)); }
+/* 断面轮廓：|φ|≤90° 上半「平顶拱帽」（超椭圆，CAD 平顶宽 0.77×全宽）；|φ|>90° 下半圆 */
+const SEP=0.5;                       // 超椭圆指数 → 顶部接近平直
+const sgn=v=>v<0?-1:(v>0?1:0);
+function profilePt(phi){
+  const c=Math.cos(phi), s=Math.sin(phi);
+  if(Math.abs(phi)<=PHI_T)
+    return {y:CAPH*sgn(c)*Math.pow(Math.abs(c),SEP), z:RP*sgn(s)*Math.pow(Math.abs(s),SEP)};
+  return {y:RP*c, z:RP*s};
+}
+function surf(u,phi,rk){             // 铲体表面点（局部坐标）
+  const p=profilePt(phi), h=hScale(u), w=wScale(u), k=rk===undefined?1:rk;
+  return [-u, -RP+h*(p.y*k+RP), p.z*w*k];
+}
+/* ① 本体在 ②③④ 覆盖的角域内让出凹槽，使各件严丝合缝 */
+function bodyRk(phi){
+  const a=Math.abs(phi);
+  return a<=PHI_T ? 0.93 : (a<=PHI_S ? 0.90 : 1.0);
+}
+/* 通用：把一条闭合断面轮廓沿轴向 u0→u1 拉伸成实心块 */
+function extrudeSection(sec,u0,u1,color,rough,metal){
+  const M=sec.length, NU=28, pos=[],idx=[];
+  for(let i=0;i<=NU;i++){
+    const u=u0+(u1-u0)*i/NU, h=hScale(u), w=wScale(u);
+    for(const p of sec) pos.push(-u, -RP+h*(p[0]+RP), p[1]*w);
+  }
+  for(let i=0;i<NU;i++)for(let j=0;j<M;j++){
+    const j2=(j+1)%M, a=i*M+j, b=i*M+j2;
+    idx.push(a,a+M,b, b,a+M,b+M);
+  }
+  for(const i of [0,NU]){             // 两端封口（扇形三角化）
+    const B=i*M;
+    for(let j=1;j<M-1;j++) i===0?idx.push(B,B+j,B+j+1):idx.push(B,B+j+1,B+j);
+  }
+  return mkMesh(pos,idx,color,rough===undefined?0.42:rough,metal===undefined?0.45:metal);
+}
+function mkMesh(pos,idx,color,rough,metal){
+  const g=new THREE.BufferGeometry();
+  g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
+  g.setIndex(idx); g.computeVertexNormals();
+  return new THREE.Mesh(g,new THREE.MeshStandardMaterial({
+    color:color,roughness:rough,metalness:Math.min(0.45,metal),side:THREE.DoubleSide}));
+}
+/* ① 中心段本体（Shaped Shovel 铲面）：全周壳 + 后端封口，带 ②③④ 的凹槽 */
+function buildBody(color){
+  const NU=36,NP=96,pos=[],idx=[];
+  for(let i=0;i<=NU;i++)for(let j=0;j<=NP;j++){
+    const phi=j/NP*Math.PI*2, ph=phi>Math.PI?phi-Math.PI*2:phi;
+    pos.push(...surf(i/NU*PLEN, phi, bodyRk(ph)));
+  }
+  for(let i=0;i<NU;i++)for(let j=0;j<NP;j++){
+    const a=i*(NP+1)+j,b=a+NP+1;
+    idx.push(a,b,a+1, a+1,b,b+1);
+  }
+  const c0=pos.length/3; pos.push(-PLEN,0,0);
+  for(let j=0;j<NP;j++){ const a=NU*(NP+1)+j; idx.push(a,a+1,c0); }
+  return mkMesh(pos,idx,color,0.45,0.45);
+}
+/* ③④ 断面：外侧贴壁圆弧 + 内侧「斜线 + 竖直」+ 上边水平（CAD 上是实心块，不是薄瓦片） */
+function sideSection(sg){
+  const pts=[],N=12;
+  for(let i=0;i<=N;i++){
+    const p=profilePt(sg*(PHI_T+(PHI_S-PHI_T)*i/N));
+    pts.push([p.y,p.z]);
+  }
+  pts.push([-0.44*RP, sg*0.34*RP]);   // 内侧斜线
+  pts.push([0,        sg*0.34*RP]);   // 内侧竖直 → 上边水平闭合
+  return pts;
+}
+/* ② 帽断面：上半平顶拱 + 底边沿分界线 */
+function capSection(){
+  const pts=[],N=24;
+  for(let i=0;i<=N;i++) { const p=profilePt(-PHI_T+2*PHI_T*i/N); pts.push([p.y,p.z]); }
+  return pts;
+}
+/* ② 的翻卷钩：竖直直段 → 90° 弯 → 水平前伸段；横截面同帽（平顶拱），带板厚 */
+function lipFrame(s){
+  if(s<=L1)     return {x:LIP_X0, y:LIP_Y0+s, nx:-1, ny:0};
+  if(s<=L1+ARC){
+    const th=Math.PI-(s-L1)/R_LIP;
+    return {x:LIP_CX+R_LIP*Math.cos(th), y:LIP_CY+R_LIP*Math.sin(th), nx:Math.cos(th), ny:Math.sin(th)};
+  }
+  return {x:LIP_CX+(s-L1-ARC), y:LIP_CY+R_LIP, nx:0, ny:1};
+}
+function buildLip(color){
+  const NV=30,NW=20,pos=[],idx=[];
+  const put=(v,j,off)=>{
+    const f=lipFrame(v*LIP_LEN), wk=1-0.25*v;
+    const psi=-PHI_T+2*PHI_T*(j/NW), cs=Math.abs(Math.cos(psi)), sn=Math.sin(psi);
+    const d=off-(1-Math.pow(cs,SEP))*CAPH*0.5*wk;      // 横向拱形
+    pos.push(f.x+d*f.nx, f.y+d*f.ny, RP*wk*sgn(sn)*Math.pow(Math.abs(sn),SEP));
+  };
+  for(const off of [0,-LIP_TH])
+    for(let i=0;i<=NV;i++)for(let j=0;j<=NW;j++) put(i/NV,j,off);
+  const S=(NV+1)*(NW+1), q=(a,b,c,d)=>idx.push(a,b,c,b,d,c);
+  for(let i=0;i<NV;i++)for(let j=0;j<NW;j++){
+    const a=i*(NW+1)+j;
+    q(a,a+NW+1,a+1,a+NW+2);
+    q(S+a+1,S+a+NW+2,S+a,S+a+NW+1);
+  }
+  for(let i=0;i<NV;i++){
+    const a=i*(NW+1), c=a+NW;
+    q(S+a,S+a+NW+1,a,a+NW+1);
+    q(c,c+NW+1,S+c,S+c+NW+1);
+  }
+  for(const i of [0,NV]) for(let j=0;j<NW;j++){
+    const a=i*(NW+1)+j;
+    if(i===0) q(a,S+a,a+1,S+a+1); else q(S+a,a,S+a+1,a+1);
+  }
+  return mkMesh(pos,idx,color,0.40,0.45);
+}
+
+const gHead=new THREE.Group(); scene.add(gHead);
+const headMats=[];                 // 供「铲头剖视」开关使用
+/* ① Centre Section */
+const segC=buildBody(0x9fb4c8); gHead.add(segC);
+headMats.push(segC.material,edges(segC,0xdff0ff,0.22).material);
+/* ② Floating Tumble：后端平顶拱帽 + 翻卷钩，绕挡板顶部的横向销轴摆动 */
+const pivT=new THREE.Vector3(LIP_X0,CAPH-0.015,0);
+const gT=new THREE.Group(); gT.position.copy(pivT); gHead.add(gT);
+const capT=extrudeSection(capSection(),CAPU0,PLEN,0xff9a3c);
+capT.geometry.translate(-pivT.x,-pivT.y,-pivT.z); gT.add(capT);
+headMats.push(capT.material,edges(capT,0xffd0a0,0.45).material);
+const lipT=buildLip(0xff9a3c);
+lipT.geometry.translate(-pivT.x,-pivT.y,-pivT.z); gT.add(lipT);
+headMats.push(lipT.material,edges(lipT,0xffd0a0,0.40).material);
+/* ③ LH Float（-z 侧）：绕斜下 45° 处的纵向销轴摆动 */
+const pivL=new THREE.Vector3(0,RP*Math.cos(PHI_S),-RP*Math.sin(PHI_S));
+const gL=new THREE.Group(); gL.position.copy(pivL); gHead.add(gL);
+const segL=extrudeSection(sideSection(-1),0,PLEN,0x44ff88);
+segL.geometry.translate(-pivL.x,-pivL.y,-pivL.z); gL.add(segL);
+headMats.push(segL.material,edges(segL,0xa8ffcf,0.45).material);
+/* ④ RH Float（+z 侧） */
+const pivR=new THREE.Vector3(0,RP*Math.cos(PHI_S),RP*Math.sin(PHI_S));
+const gR=new THREE.Group(); gR.position.copy(pivR); gHead.add(gR);
+const segR=extrudeSection(sideSection(1),0,PLEN,0x44aaff);
+segR.geometry.translate(-pivR.x,-pivR.y,-pivR.z); gR.add(segR);
+headMats.push(segR.material,edges(segR,0xa8d8ff,0.45).material);
+
+/* --- 料量反算：铲头上方（铲面之上、该段水位之下）本身容纳的体积，剩下的才堆在铲头前方 --- */
+function boreArea(y0,y1){                       // 罐膛截面在 [y0,y1] 的面积
+  let A=0,M=200; for(let j=0;j<M;j++){          // 200 段：与独立验算脚本同精度，行程数字才对得上
+    const y=y0+(y1-y0)*(j+0.5)/M;
+    A+=2*Math.sqrt(Math.max(0,R0*R0-y*y))*(y1-y0)/M; }
+  return A;
+}
+/* --- ⭐ 料床廓形 BEDP：整罐料面沿轴向的高度（x 自罐口起算）--------------------
+   每段用「水位 yn + 浅端 34° 坡脚 xs」描述，深端由前一段已成形的廓形自然挡住（取 max）——
+   这就是叠瓦式：后一段的料楔进前一段的坡里，而不是并排放四个方块。 */
+const NPX=800, DXP=LEN/NPX;                     // 4mm 离散：团块 30mm 级，足够；且解得动
+const xOfI=i=>(i+0.5)*DXP;
+let BEDP=new Array(NPX).fill(-R0);              // 当前累计廓形（末态＝装完四段）
+const BEDSNAP=[];                               // 各段装完后的廓形快照，卸料落点要用
+const AFULL=Math.PI*R0*R0;
+/* 自罐底积到 y 的断面积 —— 解析式。
+   ⚠ 不能在这里用 boreArea()：它是 200 段数值积分，嵌在两层二分里要跑上百亿次，页面会卡死。 */
+function areaBelow(y){
+  const t=Math.max(-1,Math.min(1,y/R0));
+  return R0*R0*(Math.PI/2+Math.asin(t)+t*Math.sqrt(Math.max(0,1-t*t)));
+}
+function yOfArea(a){                            // 由填充断面积反解水位
+  let lo=-R0,hi=R0;
+  for(let i=0;i<48;i++){const m=(lo+hi)/2; if(areaBelow(m)<a) lo=m; else hi=m;}
+  return (lo+hi)/2;
+}
+const capOf=(yn,xs,i)=>Math.min(yn,(xOfI(i)-xs)*TAN34-R0);   // 坡线，深端封顶到水位
+/* 只算体积增量，不建数组 —— 二分里反复调用，省掉数组分配 */
+function volOf(prof,yn,xs){
+  let dV=0;
+  for(let i=0;i<NPX;i++){
+    const nt=capOf(yn,xs,i);
+    if(nt>prof[i]) dV+=(areaBelow(nt)-areaBelow(prof[i]))*DXP;
+  }
+  return dV;
+}
+function addSeg(prof,yn,xs){                    // 真正叠加一段
+  const out=prof.slice();
+  for(let i=0;i<NPX;i++) out[i]=Math.max(prof[i],capOf(yn,xs,i));
+  return out;
+}
+/* 二分坡脚，使该段体积正好 50kg/1250 = 0.040 m³ */
+function fitSeg(prof,yn){
+  let lo=-1.0,hi=LEN;                           // xs 越小 → 坡越靠罐口 → 装得越多
+  for(let it=0;it<40;it++){
+    const m=(lo+hi)/2;
+    if(volOf(prof,yn,m)>PILE_V) lo=m; else hi=m;
+  }
+  const xs=(lo+hi)/2; return {xs,prof:addSeg(prof,yn,xs)};
+}
+/* 四段水位：顶部通道断面 ∝ 距罐底距离（镁蒸汽沿途累积，通道内流速大致恒定）。
+   二分比例系数 k，使第 4 段坡脚正好落在罐口 x=0 —— 即四段铺满 3200mm。 */
+function solveBed(k){
+  let prof=new Array(NPX).fill(-R0);
+  const Y=[],XS=[],SNAP=[]; let acc=0;
+  for(let n=0;n<NSEG;n++){
+    const yn=yOfArea(AFULL-Math.min(AFULL*0.92,k*(acc+0.35)));
+    const r=fitSeg(prof,yn);
+    prof=r.prof; Y.push(yn); XS.push(r.xs); SNAP.push(prof.slice());
+    acc=LEN-r.xs;                               // 该段坡脚到罐底的距离
+  }
+  return {Y,XS,SNAP,prof};
+}
+/* 对照档：v2 旧解 —— 四段等高 80mm 的矩形块、段间垂直断面、罐口留一段空。
+   保留它是为了能一眼看出错在哪，不是备选方案。 */
+function solveFlat(){
+  const yf=0.080, L=PILE_V/areaBelow(yf);       // 771mm
+  const Y=[],XS=[],SNAP=[]; let prof=new Array(NPX).fill(-R0);
+  for(let n=0;n<NSEG;n++){
+    const xs=LEN-(n+1)*L;                       // 浅端：垂直切断，没有休止角坡
+    prof=prof.slice();
+    for(let i=0;i<NPX;i++) if(xOfI(i)>=xs) prof[i]=Math.max(prof[i],yf);
+    Y.push(yf); XS.push(xs); SNAP.push(prof.slice());
+  }
+  return {Y,XS,SNAP,prof};
+}
+function rebuildBed(){
+  let R;
+  if(bedMode==='flat') R=solveFlat();
+  else{
+    let lo=1e-4,hi=0.5;                         // 二分 k
+    for(let i=0;i<34;i++){const m=(lo+hi)/2; if(solveBed(m).XS[3]<0) hi=m; else lo=m;}
+    R=solveBed((lo+hi)/2);
+  }
+  BEDY=R.Y; XSF=R.XS; BEDP=R.prof;
+  BEDSNAP.length=0; R.SNAP.forEach(s=>BEDSNAP.push(s));
+  /* 每段的「铲头前方料长」：水位逐段降低 → 铲头上方装的比例逐段变小 → 前方料长逐段变大 */
+  for(let n=0;n<NSEG;n++){
+    const yf=BEDY[n];
+    let V1=0,N=200;                             // 铲头上方（铲面之上、水位之下）容纳的体积
+    for(let i=0;i<N;i++){
+      const u=(i+0.5)/N*PLEN, top=-RP+hScale(u)*(CAPH+RP);
+      if(top<yf) V1+=boreArea(top,yf)*PLEN/N;
+    }
+    SLOPEL[n]=(yf+R0)/TAN34;                    // 该段前端休止角斜面长
+    FRONTSTR[n]=Math.max(0.05,(PILE_V-V1)/boreArea(-R0,yf)-0.5*SLOPEL[n]);
+    FRONTL[n]=FRONTSTR[n]+SLOPEL[n];
+  }
+  recalcCharging();
+}
+rebuildBed();
+/* --- 四段装填行程 -----------------------------------------------------------
+   第 1 段：料前沿（前坡坡脚）抵罐底 → 行程 = 3200 − FRONTL[0]。
+   第 2 段起：深端不是一堵墙，是**前一段的 34° 斜坡**。本段料填到与自己水位相交处，
+   即 x = XSF[n−1] + SLOPEL[n]；而料前沿 = 铲头前尖 + FRONTSTR[n] + SLOPEL[n]，
+   两边的 SLOPEL[n] 相消 →  行程 = XSF[n−1] − FRONTSTR[n]（用平顶段长，不是含坡的总长）。
+   ⚠ 一开始写成 deep − FRONTL[n]，等于把料前沿抵在前一段坡**脚**上，白丢了一个坡长，
+     第 2/3 段行程短了 300 多 mm。桩件跑出来 1789 与独立验算对不上才发现。
+   阶梯口径：2701 / 2139 / 1348 / 492 mm。四段铺满 3200mm，罐口余留 0。
+   ⭐ 与 v2 的一个实质差别：v2 第 4 段行程只有 304mm、铲头后端留在罐口外 151mm；
+     阶梯口径下第 4 段是 492mm，**已大于铲体长 455mm**，铲头整体进罐。
+
+   ⚠⚠ 与 P10 文字对不上，且这是 PPT 自身的矛盾，不是本模型的错：
+     P10 文字说「第 4 段与第 3 段**同位**堆料」，但本模型停位差 2701→2139→1348→492，
+     相邻差 562 / 791 / **856** mm —— 第 3→4 反而差得最大，完全不是同位。
+     根子在于：若第 4 段真与第 3 段同位（停位 1348），料就只能堆在 1348mm 往罐口的自然堆里，
+     罐口段 0–800mm 会空着 —— 那就与同一页图上「四段铺满、无空档」直接冲突。
+     **图与文字二选一。** 本模型选了图（铺满），因为它与 200kg 物料守恒自洽。
+     已列入待确认清单第 11 条，须由 Rob / 工艺方定。 */
+function recalcCharging(){
+  SEGLS=[]; STROKES=[];
+  for(let n=0;n<NSEG;n++){
+    SEGLS.push((n===0?LEN:XSF[n-1])-XSF[n]);    // 该段占的轴向长度（含浅端坡）
+    STROKES.push(Math.max(0.02, (n===0) ? LEN-FRONTL[0] : XSF[n-1]-FRONTSTR[n] ));
+  }
+  MOUTH_CLEAR=Math.max(0,XSF[NSEG-1]);
+  const mm=v=>(v*1000).toFixed(0);
+  const set=(id,v)=>{const e=document.getElementById(id); if(e) e.textContent=v;};
+  set('vSegL',SEGLS.map(mm).join(' / '));
+  set('vStroke12',mm(STROKES[0])+' / '+mm(STROKES[1]));
+  set('vStroke34',mm(STROKES[2])+' / '+mm(STROKES[3]));
+  set('vTotal',mm(2*STROKES.reduce((a,b)=>a+b,0)));
+  set('vMouth',mm(MOUTH_CLEAR));
+  set('vBedY',BEDY.map(y=>((y+R0)*1000).toFixed(0)).join(' / '));
+  set('vChan',((AFULL-boreArea(-R0,BEDY[0]))*1e4).toFixed(0)+' → '
+             +((AFULL-boreArea(-R0,BEDY[NSEG-1]))*1e4).toFixed(0));
+  set('vMode',LANG==='en'?BED_MODES[bedMode].en:BED_MODES[bedMode].name);
+}
+
+/* 销轴 Dowel Pivot（品牌金） */
+function pin(p,axis,len){
+  const m=new THREE.Mesh(new THREE.CylinderGeometry(0.010,0.010,len||0.10,12),GM());
+  if(axis==='x'){m.rotation.z=Math.PI/2;} else {m.rotation.x=Math.PI/2;}
+  m.position.copy(p); gHead.add(m); return m;
+}
+pin(pivT,'z',0.17);
+/* 左右段销轴：贴合当地断面边缘（铲体是斜坡，断面沿轴向缩小），做成两组铰链耳片 */
+function pinAt(u,sg){
+  const p=profilePt(PHI_S);
+  return new THREE.Vector3(-u, -RP+hScale(u)*(p.y+RP), sg*wScale(u)*p.z);
+}
+for(const sg of [1,-1]){ pin(pinAt(0.26,sg),'x',0.07); pin(pinAt(0.47,sg),'x',0.07); }
+
+/* ⑤⑥ 弹簧：螺旋线 */
+function spring(len,r,turns){
+  const pts=[],N=60;
+  for(let i=0;i<=N;i++){
+    const a=i/N*Math.PI*2*turns;
+    pts.push(new THREE.Vector3(i/N*len,r*Math.cos(a),r*Math.sin(a)));
+  }
+  return new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts),80,0.005,6,false),GM());
+}
+/* ⑤ Retaining Spring 自找平弹簧：断面中心正上方，连接①与②，竖直（CAD 断面 5 号件） */
+const sprT=spring(0.050,0.013,4); sprT.position.set(-PLEN+0.012,0.006,0);
+sprT.rotation.z=Math.PI/2; gHead.add(sprT);
+/* ⑥ Resistance Spring 复位弹簧 ×2：中心段 → 左/右浮动段，斜置（CAD 断面 6 号件） */
+const sprL=spring(0.050,0.011,4); sprL.position.set(-PLEN*0.80,-0.100,-0.045);
+sprL.rotation.y=Math.PI/2; sprL.rotation.z=-0.5; gHead.add(sprL);
+const sprR=spring(0.050,0.011,4); sprR.position.set(-PLEN*0.80,-0.100,0.045);
+sprR.rotation.y=-Math.PI/2; sprR.rotation.z=-0.5; gHead.add(sprR);
+
+/* 刚性链推杆 */
+const rod=new THREE.Mesh(new THREE.BoxGeometry(4.6,0.085,0.11),BM(0x6d7a89,0.5,0.8));
+rod.position.set(-PLEN-2.3,-0.02,0); gHead.add(rod); edges(rod,0xaebccc,0.28);
+for(let i=0;i<26;i++){   // 链节示意
+  const k=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.10,0.125),BM(0x4a5665,0.55,0.75));
+  k.position.set(-PLEN-0.16-i*0.175,-0.02,0); gHead.add(k);
+}
+
+/* ---------- 5. 结构标号（Sprite） ---------- */
+function labelSprite(txt,color){
+  const c=document.createElement('canvas'); c.width=256;c.height=64;
+  const x=c.getContext('2d');
+  x.fillStyle='rgba(4,12,22,0.82)'; x.fillRect(0,0,256,64);
+  x.strokeStyle=color; x.lineWidth=3; x.strokeRect(1.5,1.5,253,61);
+  x.fillStyle=color; x.font='600 34px "PingFang SC","Microsoft YaHei",sans-serif';
+  x.textAlign='center'; x.textBaseline='middle'; x.fillText(txt,128,34);
+  const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),
+    transparent:true,depthTest:false}));
+  s.scale.set(0.30,0.075,1); return s;
+}
+const gLabels=new THREE.Group(); gHead.add(gLabels);
+const LB1=labelSprite('① Centre Section','#9fb4c8');  LB1.position.set(-PLEN*0.42,-RP-0.070,0);
+const LB2=labelSprite('② Floating Tumble','#ff9a3c'); LB2.position.set(-PLEN*0.62,CAPH+0.235,0);
+const LB3=labelSprite('③ LH Float','#44ff88'); LB3.position.set(-PLEN*0.55,-0.075,-0.215);
+const LB4=labelSprite('④ RH Float','#44aaff'); LB4.position.set(-PLEN*0.55,-0.075,0.215);
+const LB5=labelSprite('⑤⑥ Springs','#C9A84C');   // 3D 标号不随语言重建纹理，统一用英文（其余四个本来就是英文）   LB5.position.set(-PLEN+0.03,0.075,0.15);
+gLabels.add(LB1,LB2,LB3,LB4,LB5);
+
+/* ---------- 6. 球团（桃核型，实测尺寸；单段 50kg ≈ NB 颗，共 NSEG 段） ---------- */
+/* v2：四段连续装填。全部 NB×NSEG 个实例常驻同一个 InstancedMesh（一次绘制），
+   每颗有三种状态：0 尚未装填（缩放为 0，不可见）／1 本段、随铲头运动／2 已卸料、留在罐内。
+   只有「本段」逐帧重算矩阵（NB≈2662 个）；已卸料与未装填的仅在状态或罐龄变化时重写一次。 */
+const briqGeo=new THREE.IcosahedronGeometry(0.5,0);      // 单位球 → 由 scale 变成 30×20.5×28
+const briqMat=new THREE.MeshStandardMaterial({color:0x7a6f60,roughness:0.96,metalness:0.02,
+  emissive:0x000000,clippingPlanes:[clipPlane]});
+const briq=new THREE.InstancedMesh(briqGeo,briqMat,NB*NSEG);
+briq.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+briq.frustumCulled=false;                                // 实例分布全罐长，别被整体剔除
+scene.add(briq);
+const bq=new Array(NB*NSEG),_m=new THREE.Matrix4(),_q=new THREE.Quaternion(),
+      _e=new THREE.Euler(),_s=new THREE.Vector3(),_p=new THREE.Vector3();
+const HIDDEN=new THREE.Matrix4().makeScale(0,0,0);
+let staticDirty=true;                                    // 未装填 / 已卸料实例待重写
+/* 料堆边界（相对铲头坐标 xr = x − headX）：
+   xr<0 段坐在铲面上（料被铲面托起），xr>0 段落在罐底、前端按 34° 休止角放坡 */
+function briqFloor(xr){
+  if(xr<0){ const u=-xr; return u<=PLEN ? -RP+hScale(u)*(CAPH+RP)+0.013 : -R0*0.96; }
+  return -R0*0.96;
+}
+function briqCeil(xr){                          // 该段水位随轴向：平顶到 FRONTSTR，之后 34° 放坡
+  const yf=BEDY[curSeg], fs=FRONTSTR[curSeg], sl=SLOPEL[curSeg];
+  return xr<=fs ? yf : yf-(xr-fs)/sl*(yf+R0);
+}
+/* ⭐ 翻滚循环（tumble）：团块被铲面托起沿 13.3° 斜坡向上滚 → 到顶被钩兜住 →
+   越过钩向前翻落回料堆 → 在料堆里下沉后退 → 再被铲面托起。
+   滚着走而不是被挤着走，这正是钩存在的理由：降低装料破碎。 */
+const XB=-PWEDGE*0.92, XC=-PWEDGE*0.62, XD=0.22;
+const YB=-RP+hScale(-XB)*(CAPH+RP)+0.014;
+function tumblePath(p,b){
+  let xr,y;
+  if(p<0.46){                                   // A 沿铲面向上滚
+    const k=p/0.46; xr=b.x0+(XB-b.x0)*k;
+    y=-RP+hScale(Math.max(0,-xr))*(CAPH+RP)+0.014;
+  }else if(p<0.58){                             // B 到顶被钩兜住、抬高
+    const k=(p-0.46)/0.12; xr=XB+(XC-XB)*k; y=YB+k*0.045;
+  }else if(p<0.82){                             // C 越过钩向前翻落
+    const k=(p-0.58)/0.24, y1=briqCeil(XD)-0.020;
+    xr=XC+(XD-XC)*k; y=(YB+0.045)+(y1-YB-0.045)*k*k;
+  }else{                                        // D 落进料堆、开始下沉
+    const k=(p-0.82)/0.18, y0=briqCeil(XD)-0.020;
+    xr=XD; y=y0-k*0.03;
+  }
+  return [xr+b.jx, y+b.jy];
+}
+/* 装填第 n 段：铲头此时停在罐口（headX=0），料按相对铲头坐标铺好 */
+function spawnBatch(n){
+  const x0=-PLEN, span=PLEN+FRONTL[n], base=n*NB;
+  for(let i=0;i<NB;i++){
+    let xr=0,y=0,z=0,ok=false;
+    for(let k=0;k<60&&!ok;k++){
+      xr=x0+Math.random()*span;
+      const lo=briqFloor(xr), hi=briqCeil(xr);
+      if(hi-lo<0.014) continue;
+      y=lo+Math.random()*(hi-lo);
+      z=(Math.random()-0.5)*2*R0*0.94;
+      ok=(y*y+z*z<=R0*R0*0.86);
+    }
+    const lo=briqFloor(xr), hi=briqCeil(xr);
+    const depth=hi>lo+1e-4 ? (y-lo)/(hi-lo) : 1;      // 0=贴铲面/罐底, 1=料面
+    bq[base+i]={st:1,xr:xr,y:y,z:z,mode:0,ph:0,pd:1.7+Math.random()*1.1,
+             drift:0.20+0.75*(1-depth)*(1-depth),      // 越靠底层，被卷得越快
+             jx:(Math.random()-0.5)*0.05, jy:(Math.random()-0.5)*0.022,
+             e:[Math.random()*6.3,Math.random()*6.3,Math.random()*6.3],
+             sp:0.4+Math.random()*1.1, sc:0.86+Math.random()*0.28,
+             x0:xr, wob:Math.random()*6.3};
+  }
+  staticDirty=true;
+}
+/* 到位卸料：本段料转为世界坐标留在罐内，不随铲头退回。
+   ⚠ 不能只是「冻结在当时的位置」——50kg 里有 45% 当时正坐在铲面上（被 13.3° 斜坡托起），
+     还有一部分正在翻滚途中悬空。铲头一退，这些料下面就没有支撑了，必须塌落到罐底。
+     v2.1 之前就是漏了这一步，看上去像料腾空停在罐里。
+   ⭐ v3 落点＝**本段廓形与前一段廓形之间的那层料**（叠瓦式），不再是一个矩形块：
+      前一段的浅端是 34° 自由坡，本段的料楔进这个坡里 —— 段间因此是斜的搭接，不是垂直断面。
+      x 按体积加权取（截面大处自然分到更多料），y 按弦长加权取，都不用拒绝采样。 */
+const FALL=0.22;            // 铲头退过该处多远，料算完全落定（m）
+let settling=-1;            // 正在塌落的批次；-1 表示没有
+function releaseBatch(n){
+  const base=n*NB;
+  const prev=(n>0)?BEDSNAP[n-1]:new Array(NPX).fill(-R0);   // 本段料的「地面」
+  const cur =BEDSNAP[n];                                     // 本段料的「顶面」
+  /* 本段料在各轴向格点的体积增量 → 累积分布，用来按体积分配颗粒 */
+  const cdf=new Float64Array(NPX); let acc=0, iLo=-1, iHi=0;
+  for(let i=0;i<NPX;i++){
+    const dv=Math.max(0,areaBelow(cur[i])-areaBelow(prev[i]))*DXP;
+    if(dv>0){ if(iLo<0) iLo=i; iHi=i; }        // 本段真正有料的索引区间
+    acc+=dv; cdf[i]=acc;
+  }
+  if(iLo<0) iLo=0;
+  const total=Math.max(1e-9,acc);
+  /* 先取当前这批料的轴向包络，把原有前后次序映射进料床，避免颗粒乱飞 */
+  let x0=Infinity,x1=-Infinity;
+  for(let i=0;i<NB;i++){
+    const b=bq[base+i]; if(!b||b.st!==1) continue;
+    const q=(b.mode===1)?tumblePath(Math.min(0.999,b.ph),b):[b.xr,b.y];
+    b.wx=headX+q[0]; b.wy=q[1];
+    if(b.wx<x0)x0=b.wx; if(b.wx>x1)x1=b.wx;
+  }
+  const span=Math.max(1e-4,x1-x0);
+  for(let i=0;i<NB;i++){
+    const b=bq[base+i]; if(!b||b.st!==1) continue;
+    const u=Math.max(0,Math.min(1,(b.wx-x0)/span));   // 0=浅端 1=深端，保持原次序
+    /* x：在体积累积分布上按 u 取位 —— 既保序，截面大的地方又自然分到更多颗粒。
+       ⚠ 两端都得夹在 [iLo,iHi]（本段真正有料的区间）里：
+         用「<」则 u≈0 的颗粒全落到索引 0，掉在罐口地板上；
+         用「<=」则 u≈1 的颗粒全推到 NPX−1，跑到罐底去。两个都被桩件的轴向范围抓出来过。 */
+    let lo=iLo,hi=iHi,tgt=u*total;
+    while(lo<hi){const m=(lo+hi)>>1; if(cdf[m]<=tgt) lo=m+1; else hi=m;}
+    const idx=Math.max(iLo,Math.min(lo,iHi));
+    const tx=xOfI(idx)+(Math.random()-0.5)*DXP;
+    /* y：在 [地面, 顶面] 之间按弦长加权 —— 用面积反解，截面内才均匀，不会上下密中间疏 */
+    const yLo=Math.max(-R0*0.95,prev[idx]), yHi=Math.max(yLo+1e-4,cur[idx]);
+    const aLo=areaBelow(yLo), aHi=areaBelow(yHi);
+    let ty=yOfArea(aLo+Math.random()*(aHi-aLo));
+    ty=Math.max(-R0*0.95,Math.min(yHi,ty));
+    const half=Math.sqrt(Math.max(0,R0*R0*0.92-ty*ty));
+    const tz=(Math.random()*2-1)*half*0.96;
+    b.st=2; b.p=0;
+    b.ax=b.wx; b.ay=b.wy; b.az=b.z;           // 起点（卸料瞬间）
+    b.tx=tx;   b.ty=ty;   b.tz=tz;            // 落点（本段廓形层内）
+  }
+  settling=n; staticDirty=true;
+}
+/* 把正在塌落的一批直接落定（回抽结束时兜底：第 4 段有一截料起点在罐口外，
+   铲头退不到那么浅，靠 headX 驱动的进度永远到不了 1） */
+function finishSettle(){
+  if(settling<0) return;
+  const base=settling*NB;
+  for(let i=0;i<NB;i++){
+    const b=bq[base+i]; if(!b||b.st!==2) continue;
+    b.p=1; b.wx=b.tx; b.wy=b.ty; b.z=b.tz;
+  }
+  settling=-1; staticDirty=true;
+}
+/* 整罐清空，回到第 1 段 */
+function resetAllBriq(){
+  for(let i=0;i<NB*NSEG;i++) bq[i]={st:0};
+  settling=-1; staticDirty=true;
+}
+resetAllBriq();
+let bTime=0;
+function updBriq(d,dt){
+  const run=(playing&&phase===PH.IN);
+  bTime+=dt;
+  /* --- 未装填 / 已落定：只在状态或罐龄变化后重写一次 --- */
+  if(staticDirty){
+    for(let i=0;i<NB*NSEG;i++){
+      const b=bq[i];
+      if(!b||b.st===1) continue;
+      if(b.st===0){ briq.setMatrixAt(i,HIDDEN); continue; }
+      const t=Math.min(1,Math.max(0,b.wx/LEN));
+      _e.set(b.e[0],b.e[1],b.e[2]); _q.setFromEuler(_e);
+      _s.set(BR_L*b.sc,BR_H*b.sc,BR_W*b.sc);
+      _p.set(b.wx, b.wy-d.sag*shp(t), b.z);       // 已卸料的料也随罐膛下垂一起沉
+      _m.compose(_p,_q,_s); briq.setMatrixAt(i,_m);
+    }
+    staticDirty=false;
+  }
+  /* --- 正在塌落的一批：铲头退过哪里，哪里的料就失去支撑落下 ---
+     进度由铲头位置驱动（不是计时器），所以看起来是一道跟着铲头后退的塌落波，
+     而不是整批同时掉下去。 */
+  if(settling>=0){
+    const base=settling*NB;
+    for(let k0=0;k0<NB;k0++){
+      const i=base+k0, b=bq[i]; if(!b||b.st!==2) continue;
+      const pw=Math.max(0,Math.min(1,(b.ax-headX)/FALL));
+      if(playing && pw>b.p) b.p=pw;                // 单调，铲头再进也不回弹
+      const p=b.p;
+      const ph=1-(1-p)*(1-p);                      // 水平：缓出
+      const x=b.ax+(b.tx-b.ax)*ph, z=b.az+(b.tz-b.az)*ph;
+      const y=b.ay+(b.ty-b.ay)*p*p;                // 竖直：p² ≈ 自由落体
+      const t=Math.min(1,Math.max(0,x/LEN));
+      if(playing){ b.e[1]+=dt*b.sp*1.6*(1-p); b.e[0]+=dt*b.sp*1.1*(1-p); }
+      _e.set(b.e[0],b.e[1],b.e[2]); _q.setFromEuler(_e);
+      _s.set(BR_L*b.sc,BR_H*b.sc,BR_W*b.sc);
+      _p.set(x, y-d.sag*shp(t), z);
+      _m.compose(_p,_q,_s); briq.setMatrixAt(i,_m);
+    }
+  }
+  /* --- 本段：逐帧重算 --- */
+  const base=curSeg*NB;
+  for(let k0=0;k0<NB;k0++){
+    const i=base+k0, b=bq[i]; if(!b||b.st!==1) continue;
+    let xr,y;
+    if(b.mode===1){
+      if(run) b.ph+=dt/b.pd;
+      if(b.ph>=1){                              // 翻落完成 → 回到前方料堆表层
+        b.mode=0; b.ph=0;
+        b.xr=FRONTSTR[curSeg]*(0.30+0.70*Math.random());
+        b.y=briqCeil(b.xr)-0.012-Math.random()*0.05;
+        b.z=(Math.random()-0.5)*2*R0*0.86;
+        const lo=briqFloor(b.xr),hi=briqCeil(b.xr);
+        b.drift=0.20+0.75*Math.pow(1-(b.y-lo)/Math.max(1e-4,hi-lo),2);
+        b.jx=(Math.random()-0.5)*0.05; b.jy=(Math.random()-0.5)*0.022;
+      }
+    }
+    if(b.mode===1){ const q=tumblePath(Math.min(0.999,b.ph),b); xr=q[0]; y=q[1]; }
+    else{
+      if(run){
+        /* 散体内部剪切：贴铲面的料被不断卷入，上层几乎跟着走 */
+        b.xr-=headV*dt*b.drift;
+        b.y -=headV*dt*b.drift*0.22;
+        const lo=briqFloor(b.xr), hi=briqCeil(b.xr);
+        if(b.y<lo+0.008) b.y=lo+0.008;
+        if(b.y>hi)       b.y=hi;
+        if(b.xr<-0.03 && b.y<briqFloor(b.xr)+0.06 && Math.random()<dt*4.0){
+          b.mode=1; b.ph=0; b.x0=b.xr;          // 被铲面卷起，进入翻滚
+        }else if(b.xr<-PWEDGE*0.94){            // 兜底：已到斜坡顶必然翻滚
+          b.mode=1; b.ph=0.44; b.x0=b.xr;
+        }
+      }
+      xr=b.xr; y=b.y+0.0022*Math.sin(bTime*3.1*b.sp+b.wob);   // 颗粒微扰
+    }
+    const x=headX+xr, t=Math.min(1,Math.max(0,x/LEN));
+    if(run){ const s=b.mode===1?2.8:0.7; b.e[1]+=dt*b.sp*s; b.e[0]+=dt*b.sp*s*0.6; }
+    _e.set(b.e[0],b.e[1],b.e[2]); _q.setFromEuler(_e);
+    _s.set(BR_L*b.sc,BR_H*b.sc,BR_W*b.sc);
+    _p.set(x, y-d.sag*shp(t), b.z);             // 罐膛下垂 → 料一起下沉
+    _m.compose(_p,_q,_s);
+    briq.setMatrixAt(i,_m);
+  }
+  briq.instanceMatrix.needsUpdate=true;
+  /* 越推越深 → 受辐射加热，球团表面回温发暗红 */
+  const hot=Math.min(1,headX/(LEN*0.8));
+  briqMat.emissive.setRGB(0.30*hot*hot,0.055*hot*hot,0.012*hot*hot);
+}
+
+/* ---------- 7. 浮动响应（核心：被动摆动由罐膛几何决定） ---------- */
+const RAD=180/Math.PI;
+const MAXT=50.0/RAD, MAXS=10.0/RAD;   // 摆角上限（示意）
+const CALS=0.014;                     // 左右段：侵入量 → 满摆角 标定（m，示意）
+let angT=0,angL=0,angR=0;             // 平滑后的实际摆角
+
+/* ② Floating Tumble：解析求「钩不侵入罐壁所需的最小回转角」
+   —— 钩自由高度 135mm，比罐膛顶 140mm 低 5mm：新罐进得去、不接触；
+      罐顶下垂超过这 5mm 余隙才开始压它，压下多少、罐顶就在哪里。
+   这一角度即热态罐膛顶部轮廓的直接读数（摆角由 0 起步、无基线偏置）。 */
+const lipSample=[];
+for(let i=0;i<=10;i++){
+  const f=lipFrame(LIP_LEN*i/10);
+  const dx=f.x-pivT.x, dy=f.y-pivT.y;
+  lipSample.push({r:Math.hypot(dx,dy), th0:Math.atan2(dy,dx)});
+}
+const LIP_TIP={r:0,th0:0};            // 钩顶（弯段最高点），用于算浮动位移
+{ const dx=LIP_CX-pivT.x, dy=LIP_CY+R_LIP-pivT.y;
+  LIP_TIP.r=Math.hypot(dx,dy); LIP_TIP.th0=Math.atan2(dy,dx); }
+const LIP_FREE_Y=LIP_CY+R_LIP;        // 自由状态钩顶高度 = 135mm（罐膛顶 140，余隙 5）
+function solveLip(headX,d){
+  let a=0;
+  for(let it=0;it<4;it++){
+    let need=a;
+    for(const s of lipSample){
+      const ang=s.th0-a;
+      const wx=headX+pivT.x+s.r*Math.cos(ang);
+      if(wx<0.01) continue;                       // 尚在罐口外，不受约束
+      const top=bore(Math.min(1,wx/LEN),0,d).y;
+      if(pivT.y+s.r*Math.sin(ang)<=top) continue; // 该点未侵入
+      const lim=(top-pivT.y)/s.r;
+      const req=s.th0-Math.asin(Math.max(-1,Math.min(1,lim)));
+      if(req>need) need=req;
+    }
+    if(need<=a+1e-5) break;
+    a=Math.min(MAXT,need);
+  }
+  return a;
+}
+const lipDrop=a=>LIP_FREE_Y-(pivT.y+LIP_TIP.r*Math.sin(LIP_TIP.th0-a));  // 钩顶垂直位移(m)
+
+/* 求某一分段沿其角域内的最大侵入量（m） */
+function intrusion(headX,phi0,phi1,d,mode){
+  let mx=0;
+  const NU=7,NP=7;
+  for(let i=0;i<=NU;i++){
+    const u=i/NU*PLEN, w=wScale(u);
+    const t=Math.min(1,Math.max(0,(headX-u)/LEN));
+    for(let j=0;j<=NP;j++){
+      const phi=phi0+(phi1-phi0)*j/NP;
+      const pp=profilePt(phi);
+      const py=-RP+hScale(u)*(pp.y+RP), pz=w*pp.z;   // 铲头表面点（未摆动）
+      const bp=bore(t,phi,d);                 // 罐膛同角度点
+      let pen;
+      if(mode==='top') pen = py - bp.y;                    // 顶：推头高于罐壁 → 侵入
+      else pen = Math.abs(pz) - Math.abs(bp.z);            // 侧：推头宽于罐壁 → 侵入
+      if(pen>mx) mx=pen;
+    }
+  }
+  return mx;
+}
+
+/* ---------- 8. 图表 ---------- */
+/* 双 Y 轴：左＝浮动位移 mm（0–80，v1 的 200 太大、曲线一直趴在底部）
+             右＝推料力 N（400–800，示意模型）
+   X 轴＝推进行程，量程取最长的第 1 段行程 2.616m。 */
+const cc=document.getElementById('cchart'),cx=cc.getContext('2d');
+let trace=[];                     // 当前段轨迹 [x, envMM, F]
+const refAges=[150,300], refTrace={};
+const XMAX=STROKES[0], YMAX=80, FMIN=400, FMAX=FMAX_CHART;
+function precomputeRef(){
+  for(const a of refAges){
+    const d=defo(a),arr=[];
+    for(let i=0;i<=120;i++){
+      const hx=i/120*XMAX;
+      const dp=lipDrop(solveLip(hx,d));
+      const il=Math.max(0,intrusion(hx,-PHI_S,-PHI_T,d,'side'));
+      const ir=Math.max(0,intrusion(hx,PHI_T,PHI_S,d,'side'));
+      arr.push([hx,(dp+il+ir)*1000]);
+    }
+    refTrace[a]=arr;
+  }
+}
+precomputeRef();
+function drawChart(curAge){
+  const W=cc.width,H=cc.height,ml=38,mb=24,mt=10,mr=44;
+  cx.clearRect(0,0,W,H);
+  const X=v=>ml+(v/XMAX)*(W-ml-mr), Y=v=>H-mb-(v/YMAX)*(H-mt-mb);
+  const YF_=v=>H-mb-((v-FMIN)/(FMAX-FMIN))*(H-mt-mb);
+  /* 网格 + 双轴刻度 */
+  cx.strokeStyle='rgba(120,160,200,.14)';cx.lineWidth=1;
+  cx.font='18px "PingFang SC",sans-serif';
+  for(let g=0;g<=4;g++){
+    const v=g*YMAX/4; cx.beginPath();cx.moveTo(ml,Y(v));cx.lineTo(W-mr,Y(v));cx.stroke();
+    cx.fillStyle='#5d7a99';cx.textAlign='right';cx.fillText(v.toFixed(0),ml-6,Y(v)+6);
+    cx.fillStyle='#8a6d2e';cx.textAlign='left';
+    cx.fillText((FMIN+g*(FMAX-FMIN)/4).toFixed(0),W-mr+6,Y(v)+6);
+  }
+  cx.fillStyle='#5d7a99';
+  for(let g=0;g<=4;g++){
+    const v=g*XMAX/4; cx.beginPath();cx.moveTo(X(v),mt);cx.lineTo(X(v),H-mb);cx.stroke();
+    cx.textAlign='center';cx.fillText(v.toFixed(1),X(v),H-6);
+  }
+  cx.textAlign='left';cx.fillStyle='#4f6a86';
+  cx.fillText(TX().chartY,ml+2,mt+16);
+  cx.textAlign='center';cx.fillText(TX().chartX,(W+ml-mr)/2,mt+16);
+  cx.textAlign='right';cx.fillStyle='#8a6d2e';cx.fillText(TX().chartF,W-mr-2,mt+16);
+  /* 对照曲线（其他罐龄的浮动量） */
+  for(const a of refAges){
+    if(Math.abs(a-curAge)<8) continue;
+    cx.strokeStyle=a===300?'rgba(176,37,37,.45)':'rgba(201,168,76,.38)';
+    cx.lineWidth=2;cx.beginPath();
+    refTrace[a].forEach((p,i)=>{ i?cx.lineTo(X(p[0]),Y(p[1])):cx.moveTo(X(p[0]),Y(p[1])); });
+    cx.stroke();
+    const last=refTrace[a][refTrace[a].length-1];
+    cx.fillStyle=a===300?'rgba(224,112,112,.7)':'rgba(201,168,76,.6)';
+    cx.textAlign='right';cx.fillText(a+TX().heats,X(last[0])-4,Y(last[1])-6);
+  }
+  /* 当前段：推料力（虚线，右轴） */
+  if(trace.length>1 && showForce){
+    cx.save();cx.setLineDash([7,5]);
+    cx.strokeStyle='#e6c974';cx.lineWidth=2.2;cx.beginPath();
+    trace.forEach((p,i)=>{ i?cx.lineTo(X(p[0]),YF_(p[2])):cx.moveTo(X(p[0]),YF_(p[2])); });
+    cx.stroke();cx.restore();
+  }
+  /* 当前段：浮动位移（粗实线，左轴） */
+  if(trace.length>1){
+    cx.strokeStyle='#55ccff';cx.lineWidth=3.2;cx.beginPath();
+    trace.forEach((p,i)=>{ i?cx.lineTo(X(p[0]),Y(p[1])):cx.moveTo(X(p[0]),Y(p[1])); });
+    cx.stroke();
+    const l=trace[trace.length-1];
+    cx.fillStyle='#55ccff';cx.beginPath();cx.arc(X(l[0]),Y(l[1]),4,0,7);cx.fill();
+  }
+  /* 段标注 */
+  cx.fillStyle='#4f6a86';cx.textAlign='left';
+  cx.fillText(TX().seg(curSeg+1,NSEG),ml+2,H-mb-6);
+}
+
+/* ---------- 9. 动画主循环 ---------- */
+const PH={IN:0,HOLD:1,OUT:2,DWELL:3,FULL:4};
+let phase=PH.IN, pt=0, headX=0, headV=0, playing=true, curAge=0, dcur=defo(0);
+let curSeg=0;                         // 当前装填段 0..NSEG-1
+let seqMode=true;                     // true=四段连续；false=只反复演第 1 段（便于细看）
+let showForce=true;
+/* 演示推进速度（非真实节拍——真实窗口是 120min/罐，这里只为看得清） */
+const V_NOM=0.29;                     // m/s
+let T_IN=9.0, T_OUT=5.5;
+const T_HOLD=0.8, T_DWELL=1.0, T_FULL=3.2;
+const clock=new THREE.Clock();
+const ease=t=>t<0.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+function segStroke(){ return seqMode?STROKES[curSeg]:STROKES[0]; }
+/* 开始装填第 n 段：铲头回罐口、行程按该段重算、生成本段 50kg 料 */
+function beginSeg(n){
+  curSeg=n; headX=0; trace=[];
+  T_IN=Math.max(1.2,segStroke()/V_NOM); T_OUT=T_IN*0.62;
+  spawnBatch(n);
+}
+
+function stepLogic(dt){
+  if(!playing){ headV=0; return; }
+  const prevX=headX;
+  pt+=dt;
+  const S=segStroke();
+  if(phase===PH.IN){
+    const k=Math.min(1,pt/T_IN); headX=ease(k)*S;
+    if(k>=1){phase=PH.HOLD;pt=0;}
+  }else if(phase===PH.HOLD){
+    if(pt>=T_HOLD){phase=PH.OUT;pt=0;releaseBatch(curSeg);}
+  }else if(phase===PH.OUT){
+    const k=Math.min(1,pt/T_OUT); headX=(1-ease(k))*S;
+    if(k>=1){phase=PH.DWELL;pt=0;finishSettle();}   // 退净即落定，兜底见 finishSettle 注释
+  }else if(phase===PH.DWELL){
+    if(pt>=T_DWELL){
+      pt=0;
+      if(seqMode && curSeg<NSEG-1){ phase=PH.IN; beginSeg(curSeg+1); }   // 下一段
+      else if(seqMode){ phase=PH.FULL; }                                 // 四段装满
+      else { phase=PH.IN; resetAllBriq(); beginSeg(0); }                  // 单段循环
+    }
+  }else{                                // PH.FULL：满罐 200kg，停一下再重来
+    if(pt>=T_FULL){ pt=0; phase=PH.IN; resetAllBriq(); beginSeg(0); }
+  }
+  headV=Math.abs(headX-prevX)/Math.max(dt,1e-4);
+}
+const PHASE_COL=['#55ccff','#44ff88','#ff9a3c','#8fa8c2','#C9A84C'];
+
+function updateHead(dt){
+  gHead.position.x=headX;
+  /* 被动响应：② 解析求回转角；③④ 由侵入量映射（弹性响应，一阶平滑） */
+  const tgT=solveLip(headX,dcur);
+  const iL=intrusion(headX,-PHI_S,-PHI_T,dcur,'side');
+  const iR=intrusion(headX,PHI_T,PHI_S,dcur,'side');
+  const tgL=Math.min(MAXS,Math.max(0,iL)/CALS*MAXS);
+  const tgR=Math.min(MAXS,Math.max(0,iR)/CALS*MAXS);
+  const k=Math.min(1,dt*9);
+  angT+=(tgT-angT)*k; angL+=(tgL-angL)*k; angR+=(tgR-angR)*k;
+  gT.rotation.z=-angT;      // ② 翻卷钩被罐顶压下
+  gL.rotation.x= angL;      // ③ 左段向内收
+  gR.rotation.x=-angR;      // ④ 右段向内收
+  /* 弹簧压缩示意（螺旋沿局部 x 生成，故压缩 scale.x） */
+  sprT.scale.x=1-angT/MAXT*0.35;
+  sprL.scale.x=1-angL/MAXS*0.30;
+  sprR.scale.x=1-angR/MAXS*0.30;
+
+  /* 推料力（示意模型）：恒定项 F_BASE + 浮动段被压紧带来的附加摩擦
+     ⭐ 只有第三项随罐龄变 → 推力曲线与浮动位移曲线同形，互为独立观测 */
+  const dropM=lipDrop(angT);
+  const F=F_BASE+MU_ST*(K_TOP*dropM+K_SIDE*(Math.max(0,iL)+Math.max(0,iR)));
+
+  /* HUD */
+  const envMM=(dropM+Math.max(0,iL)+Math.max(0,iR))*1000;
+  const t=Math.min(1,headX/LEN);
+  const placed=curSeg+((phase===PH.OUT||phase===PH.DWELL||phase===PH.FULL)?1:0);
+  document.getElementById('sSeg').textContent=
+    seqMode?TX().seg(curSeg+1,NSEG):TX().segSingle;
+  document.getElementById('sMass').textContent=(placed*CHARGE)+' / '+(NSEG*CHARGE)+' kg';
+  document.getElementById('sPhase').textContent=TX().phase[phase];
+  document.getElementById('sPhase').style.color=PHASE_COL[phase];
+  document.getElementById('sX').textContent=headX.toFixed(2)+' / '+segStroke().toFixed(2)+' m';
+  document.getElementById('sSag').textContent=(dcur.sag*shp(t)*1000).toFixed(1)+' mm';
+  document.getElementById('sEnv').textContent=envMM.toFixed(1)+' mm';
+  document.getElementById('sFrc').textContent=F.toFixed(0)+' N  (+'+(F-F_BASE).toFixed(0)+')';
+  document.getElementById('a2').textContent=(angT*RAD).toFixed(1)+'°';
+  document.getElementById('a3').textContent=(angL*RAD).toFixed(1)+'°';
+  document.getElementById('a4').textContent=(angR*RAD).toFixed(1)+'°';
+  document.getElementById('p2').style.width=(angT/MAXT*100).toFixed(0)+'%';
+  document.getElementById('p3').style.width=(angL/MAXS*100).toFixed(0)+'%';
+  document.getElementById('p4').style.width=(angR/MAXS*100).toFixed(0)+'%';
+  const over=(angT>=MAXT*0.985)||(angL>=MAXS*0.985)||(angR>=MAXS*0.985);
+  const el=document.getElementById('sPass');
+  if(over){el.textContent=TX().passLimit;el.style.color='#e07070';}
+  else if(envMM>1){el.textContent=TX().passOK;el.style.color='#44ff88';}
+  else {el.textContent=TX().passFree;el.style.color='#8fa8c2';}
+
+  if(phase===PH.IN && headX>0.02){
+    const last=trace.length?trace[trace.length-1][0]:-1;
+    if(headX-last>XMAX/150) trace.push([headX,envMM,F]);
+  }
+}
+
+/* ---------- 10. 相机预设 ---------- */
+const CAMS=[
+  {p:[-1.20,1.25,2.75],t:[1.45,-0.02,0]},  // 全景剖视
+  {p:[-0.95,0.35,0.95],t:[0.30,-0.03,0]},  // 罐口
+  {p:[null,0.30,0.80], t:[null,-0.02,0]},  // 铲头跟随
+  {p:[3.80,0.05,0.02], t:[1.1,-0.02,0]},   // 正视断面（自罐底看向罐口）
+  {p:[1.45,2.40,0.02], t:[1.45,-0.05,0]}   // 俯视
+];
+let camIdx=0,camFollow=false;
+function setCam(i){
+  camIdx=i; camFollow=(i===2);
+  const c=CAMS[i];
+  if(!camFollow){
+    camera.position.set(c.p[0],c.p[1],c.p[2]);
+    controls.target.set(c.t[0],c.t[1],c.t[2]);
+  }
+}
+setCam(0);
+
+/* ---------- 11. UI ---------- */
+document.getElementById('nBriq').textContent=NB.toLocaleString();
+document.getElementById('lipFree').textContent=(LIP_FREE_Y*1000).toFixed(0);
+/* vSegL / vBedY / vChan / vStroke* / vMouth / vTotal 由 recalcCharging() 统一填 */
+document.querySelectorAll('[data-cam]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-cam]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); setCam(+b.dataset.cam);
+});
+const ageEl=document.getElementById('age'),ageVal=document.getElementById('ageVal');
+function paintAge(){
+  ageVal.textContent = curAge===0?TX().ageNew:TX().ageN(curAge);
+  ageVal.style.color = curAge>220?'#e07070':(curAge>90?'#e6c974':'#8fb8d8');
+}
+ageEl.oninput=()=>{
+  curAge=+ageEl.value; dcur=defo(curAge);
+  paintAge();
+  buildTank(curAge); trace=[];
+  staticDirty=true;               // 已卸料的料要随新的罐膛下垂重新落位
+};
+
+/* --- 料床口径切换：阶梯（PPT P10）⇄ 等高（v2 旧解，对照）。整个料床重解，重新演一遍 --- */
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('[data-mode]').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on');
+  bedMode=b.dataset.mode; rebuildBed();
+  pt=0; phase=PH.IN; resetAllBriq(); beginSeg(0);
+});
+
+/* --- 中 / EN：静态文案换 data-en，动态文案走 T 表 --- */
+function setLang(l){
+  LANG=l;
+  document.documentElement.lang = (l==='en'?'en':'zh-CN');
+  document.querySelectorAll('[data-en]').forEach(el=>{
+    if(el.dataset.zh===undefined) el.dataset.zh=el.innerHTML;   // 首次调用时存下中文原文
+    el.innerHTML = (l==='en') ? el.dataset.en : el.dataset.zh;
+  });
+  document.getElementById('bLang').textContent = (l==='en')?'中文':'EN';
+  document.getElementById('bSeq').textContent  = seqMode?TX().seq:TX().single;
+  document.getElementById('bPlay').textContent = playing?TX().run:TX().pause;
+  paintAge();
+  recalcCharging();               // vMode / 各段数字随语言重刷（innerHTML 换过一轮）
+}
+document.getElementById('bLang').onclick=()=>setLang(LANG==='zh'?'en':'zh');
+document.getElementById('bClip').onclick=function(){
+  this.classList.toggle('on');
+  const on=this.classList.contains('on');
+  const mats=[boreMesh.material,shellMesh.material,briqMat,...furnMats];
+  mats.forEach(m=>{m.clippingPlanes=on?[clipPlane]:[];m.needsUpdate=true;});
+  boreMesh.material.transparent=!on; boreMesh.material.opacity=on?1:0.55;
+  shellMesh.material.transparent=!on; shellMesh.material.opacity=on?1:0.30;
+  cutLine.visible=on;
+};
+/* 推头剖视：切开推头，露出内部销轴与弹簧⑤⑥（弹簧本身不切） */
+document.getElementById('bHClip').onclick=function(){
+  this.classList.toggle('on');
+  const on=this.classList.contains('on');
+  headMats.forEach(m=>{m.clippingPlanes=on?[clipPlane]:[];m.needsUpdate=true;});
+};
+document.getElementById('bLabel').onclick=function(){
+  this.classList.toggle('on'); gLabels.visible=this.classList.contains('on');
+};
+document.getElementById('bBriq').onclick=function(){
+  this.classList.toggle('on'); briq.visible=this.classList.contains('on');
+};
+document.getElementById('bPlay').onclick=function(){
+  playing=!playing; this.classList.toggle('on',playing);
+  this.textContent=playing?'运行 ‖':'暂停 ▶';
+};
+/* 四段连续 ⇄ 单段循环（单段用于细看第 1 段的动作与料流） */
+document.getElementById('bSeq').onclick=function(){
+  this.classList.toggle('on'); seqMode=this.classList.contains('on');
+  this.textContent=seqMode?'四段连续':'单段循环';
+  pt=0; phase=PH.IN; resetAllBriq(); beginSeg(0);
+};
+/* 待 Rob 确认清单 */
+const robPanel=document.getElementById('rob');
+document.getElementById('bRob').onclick=function(){
+  const on=robPanel.classList.toggle('hide')===false;
+  this.classList.toggle('on',on);
+};
+document.getElementById('robCls').onclick=()=>{
+  robPanel.classList.add('hide');
+  document.getElementById('bRob').classList.remove('on');
+};
+/* --- 左栏 note 折叠：默认收起，点标题展开 ------------------------------------
+   左栏内容会随建模推进一直变长（v2.2 又加了料床两行与钩犁料警告），
+   全展开时高度 700px 以上，底部被切、还和左下的图例撞车。
+   note 是写给我们自己和 Rob 的判断依据，默认不占地方，要看时点开。 */
+const infoGroups=[];
+{
+  for(const pid of ['info','legend','chart']){
+    const pan=document.getElementById(pid); if(!pan) continue;
+    let cur=null;
+    for(const el of Array.from(pan.children)){
+      if(el.tagName==='H3'){ cur={h:el,notes:[]}; infoGroups.push(cur); }
+      else if(cur && el.classList.contains('note')) cur.notes.push(el);
+    }
+  }
+  for(const g of infoGroups){
+    g.h.onclick=()=>{
+      const open=!g.h.classList.contains('open');
+      g.h.classList.toggle('open',open);
+      for(const n of g.notes) n.classList.toggle('show',open);
+    };
+  }
+}
+function setMode(internal){
+  document.body.classList.toggle('cust',!internal);
+  if(!internal){                       // 客户版：全部收起，免得切回来时残留展开态
+    for(const g of infoGroups){
+      g.h.classList.remove('open');
+      for(const n of g.notes) n.classList.remove('show');
+    }
+  }
+  document.getElementById('bInt').classList.toggle('on',internal);
+  document.getElementById('bCli').classList.toggle('on',!internal);
+  document.getElementById('chart').classList.toggle('hide',!internal);
+  document.getElementById('rEnv').classList.toggle('hide',!internal);
+  document.getElementById('rFrc').classList.toggle('hide',!internal);
+  document.getElementById('cfTag').classList.toggle('hide',!internal);
+  document.getElementById('legend').classList.toggle('hide',!internal);
+  document.getElementById('bRob').classList.toggle('hide',!internal);
+  /* ⛔ 结构标号 = 专利交底书 A5 的结构分段（①中心段 ②浮动翻转段 ③④浮动段 ⑤⑥弹簧），
+     纪律要求客户版不出现。之前只藏了曲线/推力/图例，3D 上的标号 sprite 和右上那三条
+     摆角却照常显示 —— 客户版截个图就把结构分段全带出去了。 */
+  document.getElementById('rSwing').classList.toggle('hide',!internal);
+  const bl=document.getElementById('bLabel');
+  bl.classList.toggle('hide',!internal);
+  if(!internal){ bl.classList.remove('on'); gLabels.visible=false; }
+  else { bl.classList.add('on'); gLabels.visible=true; }
+  if(!internal){ robPanel.classList.add('hide'); }
+}
+document.getElementById('bInt').onclick=()=>setMode(true);
+document.getElementById('bCli').onclick=()=>setMode(false);
+const isClient=location.search.indexOf('v=client')>=0;
+if(isClient) setMode(false);
+/* ?lang=en 打开即英文——发 Rob / 外方看的链接用这个，省得他先找 EN 键。
+   与 v=client / q=rob 互不影响：只换语言，不改版本与面板显隐。 */
+if(location.search.indexOf('lang=en')>=0) setLang('en');
+/* ?q=rob 打开即弹出待确认清单——发 Rob 时用这个链接。
+   ⛔ 客户版下一律不弹：v=client 优先级高于 q=rob，避免两参数同时给时露内部清单。 */
+if(!isClient && location.search.indexOf('q=rob')>=0){
+  robPanel.classList.remove('hide');
+  document.getElementById('bRob').classList.add('on');
+}
+
+addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+/* ---------- 12. 渲染 ---------- */
+let chartAcc=0;
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(0.05,clock.getDelta());
+  stepLogic(dt); updateHead(dt); updBriq(dcur,dt);
+  if(camFollow){
+    camera.position.set(headX-0.90,0.30,0.80);
+    controls.target.set(headX+0.10,-0.02,0);
+  }
+  chartAcc+=dt; if(chartAcc>0.06){chartAcc=0;drawChart(curAge);}
+  controls.update();
+  renderer.render(scene,camera);
+}
+beginSeg(0);                      // 装填第 1 段
+document.getElementById('loading').classList.add('hide');
+animate();
+</script>
+</body>
+</html>
